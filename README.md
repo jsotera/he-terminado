@@ -9,17 +9,17 @@ Prototipo para que el alumnado indique qué actividades ha terminado y el profes
 
 ```powershell
 .\mvnw.cmd clean package
-java -jar target/he-terminado-1.0.0.jar
+java -jar target/he-terminado-1.0-SNAPSHOT.jar
 ```
 
-También puedes ejecutar la clase `es.jsotera.heterminado.App` desde el IDE.
+También puedes ejecutar la clase `es.jsotera.heterminado.Main` desde el IDE.
 
 El profesorado abre `http://localhost:7070/index` en el equipo que ejecuta el servidor. Todo el alumnado abre **`http://IP-DEL-PROFESOR:7070/index`**, desde otros equipos de la misma red. El profesor puede usar también esa URL. En Windows, `ipconfig` muestra la dirección IPv4 del adaptador de red. Si el cortafuegos pregunta, permite Java en la red privada del aula. La red debe permitir conexiones entre los equipos.
 
 Para cambiar el puerto o el archivo de datos:
 
 ```powershell
-java -Dport=8080 -Ddata=datos/mi-aula.xml -jar target/he-terminado-1.0.0.jar
+java -Dport=8080 -Ddata=datos/mi-aula.xml -jar target/he-terminado-1.0-SNAPSHOT.jar
 ```
 
 Las opciones `-D` van antes de `-jar`. El archivo se resuelve desde la carpeta donde se ejecuta el comando.
@@ -67,20 +67,41 @@ Los asientos empiezan por 0, de izquierda a derecha y de arriba abajo. Sin atrib
 
 ```text
 src/main/java/es/jsotera/heterminado/
-  App.java                    Arranque y configuración
+  Main.java                   Arranque y configuración
   model/                      Records: Activity, Student, Classroom
   repository/XmlRepository    Lectura y escritura XML con DOM
   service/ClassroomService    Reglas del aula y cambios de estado
   web/ClassroomController    Rutas HTTP y validación de acceso
   web/TeacherAccess          Comparación de IP
 src/main/resources/
-  templates/index.ftlh        Vista FreeMarker según el rol
+  templates/index.ftl         Vista FreeMarker según el rol
   public/app.js               Peticiones fetch, refresco y drag & drop
   public/style.css            Estilos adaptables
 src/test/java/                Pruebas de reglas, persistencia y HTTP
 ```
 
-Se emplean records de Java 17, listas y conjuntos, métodos sincronizados y JavaScript sin frameworks. No hay base de datos, contenedor de dependencias ni herramientas de compilación de frontend. FreeMarker escapa el HTML y JavaScript incorpora los nombres con `textContent`.
+Se emplean records de Java 17, listas y conjuntos, bucles `for`, métodos sincronizados y JavaScript sin frameworks. Los records agrupan datos sin escribir constructores y getters a mano: por ejemplo, `student.name()` devuelve el nombre. Al modificar un alumno se crea un nuevo record; así, los datos que se consultan no pueden cambiar mientras se guarda el XML.
+
+No hay base de datos, contenedor de dependencias ni herramientas de compilación de frontend. FreeMarker escapa el HTML con la directiva `output_format="HTML" auto_esc=true` de la plantilla y JavaScript incorpora los nombres con `textContent`.
+
+### Relación con HolaJavalin
+
+La estructura de arranque y rutas sigue el ejemplo de [HolaJavalin](https://github.com/aetxabao/HolaJavalin/tree/e969e193678ca2eb3316a8acb8ed9a923ac4367e): `Main`, configuración mediante `Javalin.create(...)`, recursos en `/public`, plantillas `.ftl` en `/templates` y rutas `app.get(...)`, `app.post(...)`, etc. que apuntan a métodos con un parámetro `Context`.
+
+El controlador registra las rutas en `routes(app)`. Cada método lee los datos de la petición, llama al servicio y prepara la respuesta. En `index`, un `HashMap` contiene el modelo que recibe FreeMarker, como en el ejemplo de saludo.
+
+El POM conserva Java 17, la versión de proyecto `1.0-SNAPSHOT` y todas las dependencias del ejemplo con sus mismas versiones:
+
+| Dependencia | Versión |
+| --- | --- |
+| Javalin | 6.4.0 |
+| javalin-rendering | 6.1.3 |
+| FreeMarker | 2.3.32 |
+| slf4j-simple | 2.0.10 |
+| log4j-core | 2.17.1 |
+| junit-jupiter-engine | 5.8.1 |
+
+Se mantiene además Jackson 2.20.1 para las peticiones y respuestas JSON. Los plugins de compilación, pruebas y empaquetado permiten generar el JAR ejecutable. El puerto sigue siendo 7070 y el archivo XML mantiene su formato anterior.
 
 Para estudiarlo, empieza por los modelos, sigue por el servicio y el repositorio, y termina con las rutas y las llamadas `fetch`.
 
@@ -94,4 +115,4 @@ Las pruebas usan carpetas temporales y un servidor HTTP en un puerto libre. Comp
 
 En Linux o macOS usa `./mvnw` (puede requerir `chmod +x mvnw`). Con Maven ya instalado puedes usar `mvn`.
 
-Tecnologías: Java 17, [Javalin 7](https://javalin.io/documentation), [FreeMarker](https://freemarker.apache.org/), Maven, HTML, CSS y JavaScript.
+Tecnologías: Java 17, [Javalin 6](https://javalin.io/archive/docs/v6.4.0.html), [FreeMarker](https://freemarker.apache.org/), Maven, HTML, CSS y JavaScript.

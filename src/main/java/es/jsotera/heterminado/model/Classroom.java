@@ -8,5 +8,7 @@ public record Classroom(int rows, int columns, List<Activity> activities, List<S
         students = List.copyOf(students);
     }
 
-    public static Classroom empty() { return new Classroom(4, 5, List.of(), List.of()); }
+    public static Classroom empty() {
+        return new Classroom(4, 5, List.of(), List.of());
+    }
 }
