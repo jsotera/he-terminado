@@ -133,16 +133,32 @@ function studentCard(s) {
       "span",
       !activities.length
         ? "Sin actividades"
-        : filter
-          ? done
-            ? "✓ Terminado"
-            : "○ Pendiente"
-          : s.completed.length +
-            " de " +
-            activities.length +
-            (done ? " · ✓" : " · Pendiente"),
+        : s.completed.length + " de " + activities.length + " terminadas",
+      "card-summary",
     ),
   );
+  const checklist = element("span", undefined, "card-activities");
+  activities.forEach((activity) => {
+    const completed = s.completed.includes(activity.id);
+    const status = completed ? "Terminada" : "Pendiente";
+    const row = element(
+      "span",
+      undefined,
+      "card-activity " +
+        (completed ? "activity-done" : "activity-pending") +
+        (filter === activity.id ? " activity-focus" : ""),
+    );
+    row.title = activity.title + ": " + status;
+    const check = element("span", completed ? "✓" : "○", "activity-check");
+    check.setAttribute("aria-hidden", "true");
+    row.append(
+      check,
+      element("span", activity.title, "activity-title"),
+      element("span", ": " + status, "sr-only"),
+    );
+    checklist.append(row);
+  });
+  card.append(checklist);
   card.onclick = (event) => {
     event.stopPropagation();
     selectStudent(s);
