@@ -33,7 +33,7 @@ Las opciones `-D` van antes de `-jar`. El archivo se resuelve desde la carpeta d
 5. Al reducir el aula, los alumnos que quedan fuera pasan a «Sin asiento». Los demás conservan su fila y columna.
 6. «Reiniciar progreso» pone todas las actividades como pendientes, conservando actividades, identidades y asientos. Eliminar una actividad elimina también su progreso, previa confirmación.
 7. «Invertir vista del aula» coloca la pizarra abajo y el pupitre 1·1 abajo a la derecha. Solo cambia el dibujo: las asignaciones se mantienen. Al desmarcarlo vuelve la vista original.
-8. Arrastra la ficha «Pasillo» a cualquier pupitre para convertirlo en un hueco sin número que no admite alumnado. También puedes pulsar «Pasillo» y luego el pupitre, con ratón o teclado. Si estaba ocupado, el alumno pasa a «Sin asiento». Pulsa la × del pasillo para recuperar un pupitre libre. Los demás pupitres conservan sus números.
+8. Arrastra la ficha «Pasillo» a cualquier pupitre para convertirlo en un hueco sin número que no admite alumnado. También puedes pulsar «Pasillo» y luego el pupitre, con ratón o teclado. Si estaba ocupado, el alumno pasa a «Sin asiento». Pulsa la × del pasillo para recuperar un pupitre libre. La numeración visible se recalcula saltando los pasillos: `1·1 — pasillo — 1·2`. Las filas que solo contienen pasillos tampoco cuentan como filas numeradas. Cambian las etiquetas, pero cada alumno conserva su lugar y la vista invertida mantiene esa misma numeración.
 
 La orientación y los pasillos se guardan automáticamente en el XML. Al redimensionar, los pasillos conservan su fila y columna y se eliminan los que queden fuera.
 

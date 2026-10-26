@@ -229,8 +229,25 @@ function aisleCell(seat) {
   // No añadimos dropTarget: un pasillo no admite alumnado.
   return node;
 }
+function seatLabels(classroom) {
+  const labels = new Map();
+  let deskRow = 0;
+  for (let row = 0; row < classroom.rows; row++) {
+    let deskColumn = 0;
+    for (let column = 0; column < classroom.columns; column++) {
+      const seat = row * classroom.columns + column;
+      if (classroom.aisles.includes(seat)) continue;
+      // Una fila solo cuenta cuando encontramos su primer pupitre.
+      if (deskColumn === 0) deskRow++;
+      deskColumn++;
+      labels.set(seat, { row: deskRow, column: deskColumn });
+    }
+  }
+  return labels;
+}
 function renderSeats() {
   const c = state.classroom;
+  const labels = seatLabels(c);
   const seats = $("seats");
   seats.replaceChildren();
   // La plantilla de columnas se expresa con clases para mantener una CSP sin estilos inline.
@@ -249,19 +266,13 @@ function renderSeats() {
     node.dataset.seat = i;
     node.tabIndex = 0;
     node.setAttribute("role", "group");
+    const label = labels.get(i);
     node.setAttribute(
       "aria-label",
-      "Fila " +
-        (Math.floor(i / c.columns) + 1) +
-        ", columna " +
-        ((i % c.columns) + 1),
+      "Fila " + label.row + ", pupitre " + label.column,
     );
     node.append(
-      element(
-        "span",
-        Math.floor(i / c.columns) + 1 + " · " + ((i % c.columns) + 1),
-        "seat-number",
-      ),
+      element("span", label.row + " · " + label.column, "seat-number"),
     );
     const student = c.students.find((s) => s.seat === i);
     if (student) node.append(studentCard(student));
