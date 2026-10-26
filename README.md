@@ -37,42 +37,9 @@ Las opciones `-D` van antes de `-jar`. El archivo se resuelve desde la carpeta d
 
 La orientación y los pasillos se guardan automáticamente en el XML. Al redimensionar, los pasillos conservan su fila y columna y se eliminan los que queden fuera.
 
-## PWA: instalar la app, siempre con conexión
+## Acceso directo
 
-La página incluye manifiesto e iconos para abrirse como una app independiente. En Chrome o Edge aparecerá «Instalar app» cuando el navegador permita mostrar el diálogo; también se puede usar su menú de instalación. En iPhone o iPad se usa «Compartir → Añadir a pantalla de inicio». La disponibilidad depende del navegador y del dispositivo.
-
-La app necesita conexión **con el servidor del aula** (no necesita acceso a Internet si todo está en la misma red):
-
-- HTML, CSS, JavaScript, manifiesto, iconos y respuestas del servidor llevan `Cache-Control: no-store`.
-- Las peticiones `fetch` usan `cache: "no-store"` y el service worker reenvía siempre las peticiones a la red. No usa Cache API, precaché, respuestas guardadas, sincronización en segundo plano ni cola de cambios.
-- Si se pierde la conexión con la página abierta, se muestra el error y se deshabilitan los controles del alumnado hasta recuperar una respuesta del servidor. Las marcas fallidas no se guardan para enviarlas después.
-- Al abrirla sin conexión, no se carga una copia del aula: el navegador muestra su error de conexión. Puede quedar visible una pantalla ya abierta, pero no permite trabajar sin servidor.
-
-Se mantienen la cookie del nombre y la preferencia del profesor para ocultar desconectados. El navegador también debe conservar los metadatos de instalación, los iconos y el propio service worker; eso no es una copia offline de páginas o datos del aula.
-
-### HTTPS para instalar desde otros equipos
-
-La instalación PWA requiere HTTPS con un certificado de confianza. La excepción de `http://localhost` solo sirve en el propio equipo servidor; `http://IP-DEL-PROFESOR` no cumple este requisito. [Requisitos de instalación de PWA](https://developer.mozilla.org/en-US/docs/Web/Progressive_web_apps/Guides/Making_PWAs_installable).
-
-El proyecto permite activar **HTTPS directamente en Javalin**, sin cambiar las versiones del POM ni añadir un proxy. Así se conserva la identificación del profesorado por la IP de la conexión. HTTP sigue siendo el modo predeterminado; al configurar HTTPS se utiliza únicamente el puerto TLS.
-
-Para una red local, puedes utilizar un certificado del centro o preparar uno con [mkcert](https://github.com/FiloSottile/mkcert). Ejemplo en PowerShell, después de instalar mkcert (sustituye `192.168.1.100` por la IP del profesor):
-
-```powershell
-New-Item -ItemType Directory -Force certs
-mkcert -install
-mkcert -pkcs12 -p12-file certs/aula.p12 192.168.1.100 localhost 127.0.0.1
-$env:HE_TERMINADO_TLS_PASSWORD = 'changeit'
-java '-Dtls.keystore=certs/aula.p12' '-Dtls.port=8443' -jar target/he-terminado-1.0-SNAPSHOT.jar
-```
-
-`changeit` es la contraseña del archivo PKCS12 generado por mkcert. Para otro certificado, usa su contraseña real en esa variable de entorno.
-
-Todos acceden entonces a **`https://IP-DEL-PROFESOR:8443/index`**. El profesor puede entrar también en `https://localhost:8443/index`. Permite ese puerto en la red privada del cortafuegos.
-
-Los equipos y móviles del alumnado deben confiar en la autoridad que emitió el certificado. Con mkcert, se distribuye e instala **solo `rootCA.pem`**, situado en la carpeta que indica `mkcert -CAROOT`; en iOS hay que habilitar además su confianza completa. Coordina esta instalación con la administración de dispositivos del centro. No compartas `rootCA-key.pem` ni `aula.p12`. Un aviso de certificado no se resuelve simplemente pulsando «Continuar»: el navegador necesita una conexión HTTPS de confianza para las funciones PWA. [Instrucciones de mkcert para móviles](https://github.com/FiloSottile/mkcert#mobile-devices).
-
-Conviene mantener estable la IP del profesor. Si cambia, el certificado debe incluir la nueva dirección y el acceso instalado debe actualizarse. Los certificados y sus claves están excluidos de Git. La configuración no crea ni instala certificados automáticamente.
+Para abrir el aula desde un icono, crea un acceso directo en el equipo del alumno con la URL `http://IP-DEL-PROFESOR:7070/index` (o el puerto configurado). Basta con el navegador y la conexión al servidor del aula; no es necesario instalar una aplicación ni configurar certificados.
 
 ## Alumnado conectado
 
@@ -129,7 +96,6 @@ Los asientos empiezan por 0, de izquierda a derecha y de arriba abajo. Sin atrib
 src/main/java/es/jsotera/heterminado/
   Main.java                   Arranque y configuración
   config/Conf                 Intervalo de actualización y tiempo de desconexión
-  config/HttpsConfig          HTTPS directo opcional mediante certificado PKCS12
   config/WebConfig            Clase que configura Javalin y FreeMarker
   model/                      Clases: Activity, Student, Classroom
   repository/XmlRepository    Lectura y escritura XML con DOM
@@ -142,10 +108,6 @@ src/main/resources/
   templates/index.ftl         Vista FreeMarker según el rol
   public/app.js               Peticiones fetch, refresco y drag & drop
   public/style.css            Estilos adaptables
-  public/manifest.webmanifest Metadatos de instalación de la PWA
-  public/pwa.js               Instalación y registro del service worker
-  public/sw.js                Solo red, sin caché ni modo offline
-  public/icons/               Iconos de la app (SVG original y PNG)
 src/test/java/                Pruebas de reglas, persistencia y HTTP
 ```
 

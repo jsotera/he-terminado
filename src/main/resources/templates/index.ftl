@@ -4,16 +4,10 @@
 <head>
   <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
   <title>¡He terminado! · Aula</title>
-  <meta name="theme-color" content="#216c52">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="default">
-  <link rel="manifest" href="/manifest.webmanifest">
-  <link rel="icon" href="/icons/app-192.png" type="image/png">
-  <link rel="apple-touch-icon" href="/icons/app-180.png">
-  <link rel="stylesheet" href="/style.css"><script src="/app.js" defer></script><script src="/pwa.js" defer></script>
+  <link rel="stylesheet" href="/style.css"><script src="/app.js" defer></script>
 </head>
 <body data-role="${teacher?then('teacher', 'student')}" data-refresh-interval="${refreshInterval?c}">
-<header><a class="brand" href="/index"><span class="brand-icon">✓</span> ¡He terminado!</a><div class="header-status"><button id="install-app" class="secondary" type="button" hidden>Instalar app</button><span id="connection" role="status">Conectando…</span><span class="badge">${teacher?then('Profesorado', 'Alumnado')}</span></div></header>
+<header><a class="brand" href="/index"><span class="brand-icon">✓</span> ¡He terminado!</a><div class="header-status"><span id="connection" role="status">Conectando…</span><span class="badge">${teacher?then('Profesorado', 'Alumnado')}</span></div></header>
 <main>
   <p id="error" class="error" role="alert" hidden></p>
   <#if teacher>
@@ -30,12 +24,9 @@
   <div id="classroom-map" class="classroom-map"><div class="board">PIZARRA</div><div class="grid-scroll"><div id="seats" class="seats"></div></div></div><h3>Sin asiento</h3><div id="unseated" class="unseated" tabindex="0" role="button" aria-label="Mover el alumno seleccionado a sin asiento"></div><p id="selection" class="hint" aria-live="polite"></p>
   </section></div>
   <#else>
-  <p id="install-help" class="hint" hidden></p>
   <div class="intro"><div><h1>A tu ritmo. Paso a paso.</h1><p>Marca las actividades que hayas terminado. Tu profesor lo verá al momento.</p></div></div>
-  <fieldset id="student-controls" disabled>
   <section id="identity" class="panel student-panel"><h2>¿Cómo te llamas?</h2><p>Usa un nombre que tu profesor reconozca.</p><form id="name-form"><label for="student-name">Tu nombre</label><div class="inline"><input id="student-name" autocomplete="name" maxlength="60" placeholder="Nombre y apellido" required><button>Entrar al aula</button></div></form><button id="cancel-name" class="secondary" hidden>Cancelar</button></section>
   <section id="student-work" class="panel student-panel" hidden><div class="section-heading"><div><p class="eyebrow">TU ESPACIO DE TRABAJO</p><h2 id="greeting"></h2></div><button id="change-name" class="secondary">Cambiar nombre</button></div><p id="student-summary"></p><div id="student-activities"></div><p class="hint">Puedes desmarcar una actividad si necesitas seguir trabajando en ella.</p></section>
-  </fieldset>
   </#if>
   <footer>He terminado! <span>Un pequeño gesto. Una clase conectada.</span></footer>
 </main>

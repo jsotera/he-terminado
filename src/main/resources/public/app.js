@@ -12,12 +12,6 @@ let state,
   dragging = false;
 let lastView = "";
 let placingAisle = false;
-let serverAvailable = false;
-function setServerAvailable(available) {
-  if (available && !serverAvailable) error("");
-  serverAvailable = available;
-  if (!teacher) $("student-controls").disabled = !available;
-}
 function element(tag, text, className) {
   const node = document.createElement(tag);
   if (text !== undefined) node.textContent = text;
@@ -31,7 +25,6 @@ function error(message) {
 async function request(path, method = "GET", body) {
   const response = await fetch(path, {
     method,
-    cache: "no-store",
     headers:
       method === "GET"
         ? {}
@@ -52,7 +45,6 @@ async function refresh() {
   if (busy || dragging) return;
   try {
     const next = await request("/api/state");
-    setServerAvailable(true);
     state = next;
     const signature = JSON.stringify(next);
     if (signature !== lastView) {
@@ -62,18 +54,12 @@ async function refresh() {
     $("connection").textContent =
       "● Conectado · cada " + refreshInterval / 1000 + " s";
   } catch (e) {
-    setServerAvailable(false);
-    if (!teacher && state) renderStudent();
     $("connection").textContent = "● Sin conexión · reintentando";
     error(e.message);
   }
 }
 async function mutate(path, method, body) {
   if (busy) return false;
-  if (!serverAvailable) {
-    error("Sin conexión con el servidor. Reconecta para continuar.");
-    return false;
-  }
   busy = true;
   error("");
   try {
@@ -519,9 +505,3 @@ if (teacher) {
 }
 refresh();
 setInterval(refresh, refreshInterval);
-window.addEventListener("online", refresh);
-window.addEventListener("offline", function () {
-  setServerAvailable(false);
-  $("connection").textContent = "● Sin conexión · reintentando";
-  error("Sin conexión con el servidor. Reconecta para continuar.");
-});

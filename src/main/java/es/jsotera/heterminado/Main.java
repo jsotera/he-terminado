@@ -1,6 +1,5 @@
 package es.jsotera.heterminado;
 
-import es.jsotera.heterminado.config.HttpsConfig;
 import es.jsotera.heterminado.config.WebConfig;
 import es.jsotera.heterminado.repository.XmlRepository;
 import es.jsotera.heterminado.service.ClassroomService;
@@ -28,16 +27,8 @@ public class Main {
                                         app.stop();
                                     }
                                 }));
-        String protocol = HttpsConfig.enabled() ? "https" : "http";
-        int accessPort = HttpsConfig.enabled() ? HttpsConfig.port() : port;
-        System.out.println(
-                "He terminado! · Profesorado: "
-                        + protocol
-                        + "://localhost:"
-                        + accessPort
-                        + "/index");
-        System.out.println(
-                "Alumnado: " + protocol + "://<IP-del-profesor>:" + accessPort + "/index");
+        System.out.println("He terminado! · Profesorado: http://localhost:" + port + "/index");
+        System.out.println("Alumnado: http://<IP-del-profesor>:" + port + "/index");
     }
 
     /** Separamos la creación del arranque para poder probar el servidor en otro puerto. */

@@ -36,14 +36,6 @@ public class ClassroomController {
                         checkRequest(ctx);
                     }
                 });
-        // Las respuestas dinámicas no se guardan. Los estáticos se configuran en Main.
-        app.after(
-                new Handler() {
-                    @Override
-                    public void handle(Context ctx) {
-                        ctx.header("Cache-Control", "no-store");
-                    }
-                });
         app.get(
                 "/",
                 new Handler() {
@@ -207,8 +199,7 @@ public class ClassroomController {
                 COOKIE
                         + "="
                         + student.getId()
-                        + "; Path=/; Max-Age=31536000; HttpOnly; SameSite=Strict"
-                        + (ctx.req().isSecure() ? "; Secure" : ""));
+                        + "; Path=/; Max-Age=31536000; HttpOnly; SameSite=Strict");
         ctx.json(student);
     }
 
@@ -298,7 +289,6 @@ public class ClassroomController {
         ctx.header(
                 "Content-Security-Policy",
                 "default-src 'self'; script-src 'self'; style-src 'self'; "
-                        + "worker-src 'self'; manifest-src 'self'; "
                         + "frame-ancestors 'none'; base-uri 'none'; form-action 'self'");
         if (!ctx.path().startsWith("/api/")) {
             return;
