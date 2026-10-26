@@ -44,6 +44,8 @@ public class ClassroomController {
     /** Igual que en HolaJavalin: cada ruta apunta a un método que recibe Context. */
     public void routes(Javalin app) {
         app.before(this::checkRequest);
+        // Las respuestas dinámicas no se guardan. Los estáticos se configuran en Main.
+        app.after(ctx -> ctx.header("Cache-Control", "no-store"));
         app.get("/", ctx -> ctx.redirect("/index"));
         app.get("/index", this::index);
         app.get("/api/state", this::state);
@@ -102,7 +104,8 @@ public class ClassroomController {
                 COOKIE
                         + "="
                         + student.id()
-                        + "; Path=/; Max-Age=31536000; HttpOnly; SameSite=Strict");
+                        + "; Path=/; Max-Age=31536000; HttpOnly; SameSite=Strict"
+                        + (ctx.req().isSecure() ? "; Secure" : ""));
         ctx.json(student);
     }
 
@@ -192,6 +195,7 @@ public class ClassroomController {
         ctx.header(
                 "Content-Security-Policy",
                 "default-src 'self'; script-src 'self'; style-src 'self'; "
+                        + "worker-src 'self'; manifest-src 'self'; "
                         + "frame-ancestors 'none'; base-uri 'none'; form-action 'self'");
         if (!ctx.path().startsWith("/api/")) {
             return;

@@ -1,5 +1,6 @@
 package es.jsotera.heterminado;
 
+import es.jsotera.heterminado.config.HttpsConfig;
 import es.jsotera.heterminado.repository.XmlRepository;
 import es.jsotera.heterminado.service.ClassroomService;
 import es.jsotera.heterminado.web.ClassroomController;
@@ -10,6 +11,7 @@ import io.javalin.Javalin;
 import io.javalin.rendering.template.JavalinFreemarker;
 
 import java.nio.file.Path;
+import java.util.Map;
 
 public class Main {
 
@@ -21,8 +23,16 @@ public class Main {
         app.start("0.0.0.0", port);
 
         Runtime.getRuntime().addShutdownHook(new Thread(app::stop));
-        System.out.println("He terminado! · Profesorado: http://localhost:" + port + "/index");
-        System.out.println("Alumnado: http://<IP-del-profesor>:" + port + "/index");
+        String protocol = HttpsConfig.enabled() ? "https" : "http";
+        int accessPort = HttpsConfig.enabled() ? HttpsConfig.port() : port;
+        System.out.println(
+                "He terminado! · Profesorado: "
+                        + protocol
+                        + "://localhost:"
+                        + accessPort
+                        + "/index");
+        System.out.println(
+                "Alumnado: " + protocol + "://<IP-del-profesor>:" + accessPort + "/index");
     }
 
     /** Separamos la creación del arranque para poder probar el servidor en otro puerto. */
@@ -38,9 +48,16 @@ public class Main {
         Javalin app =
                 Javalin.create(
                         config -> {
-                            config.staticFiles.add("/public");
+                            config.staticFiles.add(
+                                    files -> {
+                                        files.directory = "/public";
+                                        files.headers = Map.of("Cache-Control", "no-store");
+                                        files.mimeTypes.add(
+                                                "application/manifest+json", "webmanifest");
+                                    });
                             config.fileRenderer(new JavalinFreemarker(templates));
                             config.http.maxRequestSize = 16_384L;
+                            HttpsConfig.configure(config);
                         });
 
         controller.routes(app);

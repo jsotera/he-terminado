@@ -5,3 +5,9 @@ data/
 *.iml
 .vscode/
 *.log
+certs/
+*.p12
+*.pfx
+*.jks
+*.key
+*-key.pem

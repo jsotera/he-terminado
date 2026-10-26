@@ -16,6 +16,15 @@
 body {
   margin: 0;
 }
+#student-controls {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+}
+#student-controls:disabled {
+  opacity: 0.55;
+}
 header {
   height: 84px;
   background: #fff;
