@@ -5,17 +5,19 @@
   <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
   <title>¡He terminado! · Aula</title><link rel="stylesheet" href="/style.css"><script src="/app.js" defer></script>
 </head>
-<body data-role="${teacher?then('teacher', 'student')}">
+<body data-role="${teacher?then('teacher', 'student')}" data-refresh-interval="${refreshInterval?c}">
 <header><a class="brand" href="/index"><span class="brand-icon">✓</span> ¡He terminado!</a><div class="header-status"><span id="connection" role="status">Conectando…</span><span class="badge">${teacher?then('Profesorado', 'Alumnado')}</span></div></header>
 <main>
   <p id="error" class="error" role="alert" hidden></p>
   <#if teacher>
   <div class="teacher-layout"><aside class="teacher-sidebar">
   <section class="stats" aria-label="Resumen del aula"><article><span>Alumnado</span><strong id="student-count">0</strong></article><article><span>Actividades</span><strong id="activity-count">0</strong></article><article><span>Todo terminado</span><strong id="finished-count">0</strong></article></section>
+  <p id="presence-summary" class="hint" aria-live="polite"></p>
   <section class="panel"><h2>Actividades</h2><form id="activity-form"><label for="activity-title">Nueva actividad</label><div class="inline"><input id="activity-title" maxlength="100" placeholder="Ej. Ejercicio de arrays" required><button type="submit" aria-label="Añadir actividad">+</button></div></form><div id="activity-list"></div><button id="reset" class="secondary full">Reiniciar progreso</button><p class="hint">Conserva los nombres, las actividades y los asientos.</p></section></aside>
   <section class="panel classroom"><div class="section-heading"><h2>Mi aula</h2><label>Ver progreso de <select id="activity-filter"><option value="">Todas las actividades</option></select></label></div>
   <form id="layout-form" class="layout-form"><label>Filas <input id="rows" type="number" min="1" max="12" value="4" required></label><label>Columnas <input id="columns" type="number" min="1" max="12" value="5" required></label><button class="secondary">Guardar distribución</button></form>
   <div class="classroom-tools"><label class="checkbox-label"><input id="invert-view" type="checkbox"> Invertir vista del aula (pizarra abajo)</label><button id="aisle-tool" class="secondary aisle-tool" type="button" draggable="true" aria-pressed="false">↕ Pasillo</button></div>
+  <label class="checkbox-label presence-option"><input id="hide-offline" type="checkbox"> Ocultar alumnado desconectado</label>
   <p class="hint">Arrastra «Pasillo» a un pupitre o pulsa «Pasillo» y elige una casilla. Si está ocupado, el alumno pasa a «Sin asiento». La × recupera el pupitre.</p>
   <div class="legend"><span class="dot red"></span> Pendiente <span class="dot green"></span> Terminado <span class="dot gray"></span> Sin actividades</div><p class="hint">Arrastra a cada alumno a su sitio. También puedes seleccionarlo y pulsar un asiento para moverlo.</p>
   <div id="classroom-map" class="classroom-map"><div class="board">PIZARRA</div><div class="grid-scroll"><div id="seats" class="seats"></div></div></div><h3>Sin asiento</h3><div id="unseated" class="unseated" tabindex="0" role="button" aria-label="Mover el alumno seleccionado a sin asiento"></div><p id="selection" class="hint" aria-live="polite"></p>

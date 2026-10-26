@@ -411,6 +411,21 @@ button:hover {
 .student-card strong {
   font-size: 12px;
 }
+.student-card.offline {
+  opacity: 0.55;
+  filter: grayscale(1);
+  cursor: default;
+}
+.student-card.offline:hover {
+  filter: grayscale(1);
+}
+.student-card .student-presence {
+  font-size: 10px;
+  font-weight: 650;
+}
+.presence-option {
+  margin-top: 14px;
+}
 .student-card span {
   font-size: 10px;
   font-weight: 450;

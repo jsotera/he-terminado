@@ -1,6 +1,7 @@
 "use strict";
 const $ = (id) => document.getElementById(id);
 const teacher = document.body.dataset.role === "teacher";
+const refreshInterval = Number(document.body.dataset.refreshInterval);
 let state,
   selectedStudent = null,
   editingName = false,
@@ -40,7 +41,8 @@ async function refresh() {
       render();
       lastView = signature;
     }
-    $("connection").textContent = "● Conectado · cada 2 s";
+    $("connection").textContent =
+      "● Conectado · cada " + refreshInterval / 1000 + " s";
   } catch (e) {
     $("connection").textContent = "● Sin conexión · reintentando";
     error(e.message);
@@ -68,6 +70,12 @@ function render() {
 }
 function renderTeacher() {
   const c = state.classroom;
+  const connected = c.students.filter(isOnline).length;
+  $("presence-summary").textContent =
+    connected +
+    " conectados · " +
+    (c.students.length - connected) +
+    " desconectados";
   $("student-count").textContent = c.students.length;
   $("activity-count").textContent = c.activities.length;
   $("finished-count").textContent = c.activities.length
@@ -107,12 +115,19 @@ function renderTeacher() {
   });
   renderSeats();
 }
+function isOnline(student) {
+  return state.onlineStudentIds.includes(student.id);
+}
+function isVisible(student) {
+  return !$("hide-offline").checked || isOnline(student);
+}
 function selectStudent(s) {
   placingAisle = false;
   selectedStudent = selectedStudent === s.id ? null : s.id;
   renderSeats();
 }
 function studentCard(s) {
+  const online = isOnline(s);
   const activities = state.classroom.activities;
   const filter = $("activity-filter").value;
   const done = filter
@@ -124,13 +139,20 @@ function studentCard(s) {
     undefined,
     "student-card " +
       (!activities.length ? "neutral" : done ? "done" : "pending") +
+      (online ? "" : " offline") +
       (selectedStudent === s.id ? " selected" : ""),
   );
   card.type = "button";
-  card.draggable = true;
+  card.draggable = online;
+  card.disabled = !online;
   card.setAttribute("aria-pressed", String(selectedStudent === s.id));
   card.append(
     element("strong", s.name),
+    element(
+      "span",
+      online ? "● Conectado" : "○ Sin conexión",
+      "student-presence",
+    ),
     element(
       "span",
       !activities.length
@@ -247,6 +269,12 @@ function seatLabels(classroom) {
 }
 function renderSeats() {
   const c = state.classroom;
+  if (
+    selectedStudent &&
+    !c.students.some((s) => s.id === selectedStudent && isOnline(s))
+  ) {
+    selectedStudent = null;
+  }
   const labels = seatLabels(c);
   const seats = $("seats");
   seats.replaceChildren();
@@ -275,15 +303,15 @@ function renderSeats() {
       element("span", label.row + " · " + label.column, "seat-number"),
     );
     const student = c.students.find((s) => s.seat === i);
-    if (student) node.append(studentCard(student));
-    else node.append(element("span", "Libre", "free"));
+    if (student && isVisible(student)) node.append(studentCard(student));
+    else node.append(element("span", student ? "Reservado" : "Libre", "free"));
     dropTarget(node, i);
     seats.append(node);
   }
   const unseated = $("unseated");
   unseated.replaceChildren();
   c.students
-    .filter((s) => s.seat === null)
+    .filter((s) => s.seat === null && isVisible(s))
     .forEach((s) => unseated.append(studentCard(s)));
   if (!unseated.childElementCount)
     unseated.append(element("p", "Sin alumnado pendiente de colocar.", "hint"));
@@ -334,6 +362,24 @@ function renderStudent() {
   });
 }
 if (teacher) {
+  // Es una preferencia de este navegador; no cambia ni borra alumnos del aula.
+  try {
+    $("hide-offline").checked =
+      localStorage.getItem("heterminado_hide_offline") === "true";
+  } catch (e) {
+    /* El navegador puede desactivar el almacenamiento local. */
+  }
+  $("hide-offline").onchange = () => {
+    try {
+      localStorage.setItem(
+        "heterminado_hide_offline",
+        String($("hide-offline").checked),
+      );
+    } catch (e) {
+      /* El checkbox sigue funcionando durante esta sesión. */
+    }
+    renderSeats();
+  };
   $("invert-view").onchange = async () => {
     const checkbox = $("invert-view");
     checkbox.disabled = true;
@@ -405,4 +451,4 @@ if (teacher) {
   };
 }
 refresh();
-setInterval(refresh, 2000);
+setInterval(refresh, refreshInterval);

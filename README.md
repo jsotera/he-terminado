@@ -37,6 +37,23 @@ Las opciones `-D` van antes de `-jar`. El archivo se resuelve desde la carpeta d
 
 La orientación y los pasillos se guardan automáticamente en el XML. Al redimensionar, los pasillos conservan su fila y columna y se eliminan los que queden fuera.
 
+## Alumnado conectado
+
+Cada consulta del navegador del alumno a `/api/state` actualiza su última conexión. Se envía cada dos segundos; también se actualiza al entrar con su nombre o marcar una actividad. Si pasan 30 segundos sin recibir nada, el profesor lo verá atenuado, con la etiqueta «Sin conexión» y sin poder seleccionar ni arrastrar su tarjeta.
+
+El checkbox «Ocultar alumnado desconectado» oculta esas tarjetas, también en «Sin asiento». Los pupitres que ocupaban se muestran como «Reservado»: el alumno conserva su sitio, su nombre y su progreso. Si vuelve a conectar, reaparece automáticamente. La preferencia del checkbox se recuerda en el navegador del profesor. Los contadores de alumnado y progreso siguen incluyendo a todo el alumnado guardado; debajo se indica cuántos están conectados y desconectados.
+
+Los tiempos se configuran en `src/main/java/es/jsotera/heterminado/config/Conf.java`:
+
+```java
+public static final long INTERVALO_ACTUALIZACION_MS = 2_000;
+public static final long TIEMPO_DESCONEXION_MS = 30_000;
+```
+
+Son milisegundos. Usa un intervalo positivo menor que el tiempo de desconexión y recompila y reinicia después de cambiarlos. El servidor pasa el intervalo al navegador, por lo que no hay que editar JavaScript.
+
+La presencia se mantiene en memoria y no escribe el XML en cada consulta. Tras reiniciar el servidor, cada alumno se considera desconectado hasta su siguiente consulta. «Conectado» significa que su navegador ha enviado una petición recientemente; si el dispositivo suspende la pestaña o pierde la red, dejará de enviar peticiones y se aplicará el mismo tiempo de espera.
+
 ## Identificación por IP
 
 El servidor compara la dirección remota de la conexión HTTP con su dirección local; también reconoce las direcciones de loopback (`localhost`). No pide nombre al profesorado ni confía en `X-Forwarded-For`. Las rutas de administración comprueban el rol en el servidor.
@@ -74,9 +91,11 @@ Los asientos empiezan por 0, de izquierda a derecha y de arriba abajo. Sin atrib
 ```text
 src/main/java/es/jsotera/heterminado/
   Main.java                   Arranque y configuración
+  config/Conf                 Intervalo de actualización y tiempo de desconexión
   model/                      Records: Activity, Student, Classroom
   repository/XmlRepository    Lectura y escritura XML con DOM
   service/ClassroomService    Reglas del aula y cambios de estado
+  service/PresenceService     Última conexión de cada alumno, en memoria
   web/ClassroomController    Rutas HTTP y validación de acceso
   web/TeacherAccess          Comparación de IP
 src/main/resources/
