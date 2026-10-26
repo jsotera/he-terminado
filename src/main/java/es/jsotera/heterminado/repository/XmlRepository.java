@@ -105,32 +105,32 @@ public class XmlRepository {
             Document doc = factory().newDocumentBuilder().newDocument();
             Element root = doc.createElement("classroom");
             doc.appendChild(root);
-            root.setAttribute("rows", "" + state.rows());
-            root.setAttribute("columns", "" + state.columns());
-            root.setAttribute("inverted", "" + state.inverted());
+            root.setAttribute("rows", "" + state.getRows());
+            root.setAttribute("columns", "" + state.getColumns());
+            root.setAttribute("inverted", "" + state.isInverted());
             Element aisles = doc.createElement("aisles");
             root.appendChild(aisles);
-            for (Integer seat : new TreeSet<>(state.aisles())) {
+            for (Integer seat : new TreeSet<>(state.getAisles())) {
                 Element aisle = doc.createElement("aisle");
                 aisle.setAttribute("seat", "" + seat);
                 aisles.appendChild(aisle);
             }
             Element activities = doc.createElement("activities");
             root.appendChild(activities);
-            for (Activity a : state.activities()) {
+            for (Activity a : state.getActivities()) {
                 Element e = doc.createElement("activity");
-                e.setAttribute("id", a.id());
-                e.setTextContent(a.title());
+                e.setAttribute("id", a.getId());
+                e.setTextContent(a.getTitle());
                 activities.appendChild(e);
             }
             Element students = doc.createElement("students");
             root.appendChild(students);
-            for (Student s : state.students()) {
+            for (Student s : state.getStudents()) {
                 Element e = doc.createElement("student");
-                e.setAttribute("id", s.id());
-                e.setAttribute("name", s.name());
-                if (s.seat() != null) e.setAttribute("seat", "" + s.seat());
-                for (String id : s.completed()) {
+                e.setAttribute("id", s.getId());
+                e.setAttribute("name", s.getName());
+                if (s.getSeat() != null) e.setAttribute("seat", "" + s.getSeat());
+                for (String id : s.getCompleted()) {
                     Element done = doc.createElement("done");
                     done.setAttribute("activityId", id);
                     e.appendChild(done);

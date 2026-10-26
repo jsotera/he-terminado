@@ -26,8 +26,8 @@ public class ClassroomService {
     }
 
     public synchronized Student student(String id) {
-        for (Student student : state.students()) {
-            if (student.id().equals(id)) {
+        for (Student student : state.getStudents()) {
+            if (student.getId().equals(id)) {
                 return student;
             }
         }
@@ -55,44 +55,44 @@ public class ClassroomService {
         if (previous == null) {
             next = new Student(UUID.randomUUID().toString(), name, Set.of(), null);
         } else {
-            next = new Student(previous.id(), name, previous.completed(), previous.seat());
+            next = new Student(previous.getId(), name, previous.getCompleted(), previous.getSeat());
         }
 
         List<Student> students = new ArrayList<>();
-        for (Student student : state.students()) {
-            if (!student.id().equals(next.id())) {
+        for (Student student : state.getStudents()) {
+            if (!student.getId().equals(next.getId())) {
                 students.add(student);
             }
         }
         students.add(next);
         commit(
                 new Classroom(
-                        state.rows(),
-                        state.columns(),
-                        state.activities(),
+                        state.getRows(),
+                        state.getColumns(),
+                        state.getActivities(),
                         students,
-                        state.inverted(),
-                        state.aisles()));
+                        state.isInverted(),
+                        state.getAisles()));
         return next;
     }
 
     public synchronized void addActivity(String title) {
-        List<Activity> activities = new ArrayList<>(state.activities());
+        List<Activity> activities = new ArrayList<>(state.getActivities());
         Activity activity = new Activity(UUID.randomUUID().toString(), text(title, 100));
         activities.add(activity);
         commit(
                 new Classroom(
-                        state.rows(),
-                        state.columns(),
+                        state.getRows(),
+                        state.getColumns(),
                         activities,
-                        state.students(),
-                        state.inverted(),
-                        state.aisles()));
+                        state.getStudents(),
+                        state.isInverted(),
+                        state.getAisles()));
     }
 
     private void requireActivity(String id) {
-        for (Activity activity : state.activities()) {
-            if (activity.id().equals(id)) {
+        for (Activity activity : state.getActivities()) {
+            if (activity.getId().equals(id)) {
                 return;
             }
         }
@@ -102,26 +102,26 @@ public class ClassroomService {
     public synchronized void deleteActivity(String id) {
         requireActivity(id);
         List<Activity> activities = new ArrayList<>();
-        for (Activity activity : state.activities()) {
-            if (!activity.id().equals(id)) {
+        for (Activity activity : state.getActivities()) {
+            if (!activity.getId().equals(id)) {
                 activities.add(activity);
             }
         }
 
         List<Student> students = new ArrayList<>();
-        for (Student student : state.students()) {
-            Set<String> done = new HashSet<>(student.completed());
+        for (Student student : state.getStudents()) {
+            Set<String> done = new HashSet<>(student.getCompleted());
             done.remove(id);
-            students.add(new Student(student.id(), student.name(), done, student.seat()));
+            students.add(new Student(student.getId(), student.getName(), done, student.getSeat()));
         }
         commit(
                 new Classroom(
-                        state.rows(),
-                        state.columns(),
+                        state.getRows(),
+                        state.getColumns(),
                         activities,
                         students,
-                        state.inverted(),
-                        state.aisles()));
+                        state.isInverted(),
+                        state.getAisles()));
     }
 
     public synchronized void complete(String studentId, String activityId, boolean completed) {
@@ -131,27 +131,28 @@ public class ClassroomService {
         }
 
         List<Student> students = new ArrayList<>();
-        for (Student student : state.students()) {
-            if (student.id().equals(studentId)) {
-                Set<String> done = new HashSet<>(student.completed());
+        for (Student student : state.getStudents()) {
+            if (student.getId().equals(studentId)) {
+                Set<String> done = new HashSet<>(student.getCompleted());
                 if (completed) {
                     done.add(activityId);
                 } else {
                     done.remove(activityId);
                 }
-                students.add(new Student(student.id(), student.name(), done, student.seat()));
+                students.add(
+                        new Student(student.getId(), student.getName(), done, student.getSeat()));
             } else {
                 students.add(student);
             }
         }
         commit(
                 new Classroom(
-                        state.rows(),
-                        state.columns(),
-                        state.activities(),
+                        state.getRows(),
+                        state.getColumns(),
+                        state.getActivities(),
                         students,
-                        state.inverted(),
-                        state.aisles()));
+                        state.isInverted(),
+                        state.getAisles()));
     }
 
     public synchronized void resize(int rows, int columns) {
@@ -160,31 +161,37 @@ public class ClassroomService {
         }
 
         List<Student> students = new ArrayList<>();
-        for (Student student : state.students()) {
-            Integer seat = student.seat();
+        for (Student student : state.getStudents()) {
+            Integer seat = student.getSeat();
             if (seat != null) {
                 // Conservamos la fila y columna al cambiar el tamaño del aula.
-                int row = seat / state.columns();
-                int column = seat % state.columns();
+                int row = seat / state.getColumns();
+                int column = seat % state.getColumns();
                 if (row < rows && column < columns) {
                     seat = row * columns + column;
                 } else {
                     seat = null;
                 }
             }
-            students.add(new Student(student.id(), student.name(), student.completed(), seat));
+            students.add(
+                    new Student(student.getId(), student.getName(), student.getCompleted(), seat));
         }
         Set<Integer> aisles = new HashSet<>();
-        for (Integer seat : state.aisles()) {
-            int row = seat / state.columns();
-            int column = seat % state.columns();
+        for (Integer seat : state.getAisles()) {
+            int row = seat / state.getColumns();
+            int column = seat % state.getColumns();
             if (row < rows && column < columns) {
                 aisles.add(row * columns + column);
             }
         }
         commit(
                 new Classroom(
-                        rows, columns, state.activities(), students, state.inverted(), aisles));
+                        rows,
+                        columns,
+                        state.getActivities(),
+                        students,
+                        state.isInverted(),
+                        aisles));
     }
 
     public synchronized void move(String id, Integer seat) {
@@ -192,87 +199,92 @@ public class ClassroomService {
         if (moving == null) {
             throw new IllegalArgumentException("El alumno ya no existe.");
         }
-        if (seat != null && (seat < 0 || seat >= state.rows() * state.columns())) {
+        if (seat != null && (seat < 0 || seat >= state.getRows() * state.getColumns())) {
             throw new IllegalArgumentException("Asiento incorrecto.");
         }
-        if (seat != null && state.aisles().contains(seat)) {
+        if (seat != null && state.getAisles().contains(seat)) {
             throw new IllegalArgumentException("No se puede colocar alumnado en un pasillo.");
         }
 
         List<Student> students = new ArrayList<>();
-        for (Student student : state.students()) {
-            Integer target = student.seat();
-            if (student.id().equals(id)) {
+        for (Student student : state.getStudents()) {
+            Integer target = student.getSeat();
+            if (student.getId().equals(id)) {
                 target = seat;
-            } else if (seat != null && seat.equals(student.seat())) {
+            } else if (seat != null && seat.equals(student.getSeat())) {
                 // Si el asiento está ocupado, intercambiamos los sitios.
-                target = moving.seat();
+                target = moving.getSeat();
             }
-            students.add(new Student(student.id(), student.name(), student.completed(), target));
+            students.add(
+                    new Student(
+                            student.getId(), student.getName(), student.getCompleted(), target));
         }
         commit(
                 new Classroom(
-                        state.rows(),
-                        state.columns(),
-                        state.activities(),
+                        state.getRows(),
+                        state.getColumns(),
+                        state.getActivities(),
                         students,
-                        state.inverted(),
-                        state.aisles()));
+                        state.isInverted(),
+                        state.getAisles()));
     }
 
     public synchronized void reset() {
         List<Student> students = new ArrayList<>();
-        for (Student student : state.students()) {
-            students.add(new Student(student.id(), student.name(), Set.of(), student.seat()));
+        for (Student student : state.getStudents()) {
+            students.add(
+                    new Student(student.getId(), student.getName(), Set.of(), student.getSeat()));
         }
         commit(
                 new Classroom(
-                        state.rows(),
-                        state.columns(),
-                        state.activities(),
+                        state.getRows(),
+                        state.getColumns(),
+                        state.getActivities(),
                         students,
-                        state.inverted(),
-                        state.aisles()));
+                        state.isInverted(),
+                        state.getAisles()));
     }
 
     public synchronized void setInverted(boolean inverted) {
         // Cambia solo la representación: los identificadores de asiento se conservan.
         commit(
                 new Classroom(
-                        state.rows(),
-                        state.columns(),
-                        state.activities(),
-                        state.students(),
+                        state.getRows(),
+                        state.getColumns(),
+                        state.getActivities(),
+                        state.getStudents(),
                         inverted,
-                        state.aisles()));
+                        state.getAisles()));
     }
 
     public synchronized void setAisle(int seat, boolean aisle) {
-        if (seat < 0 || seat >= state.rows() * state.columns()) {
+        if (seat < 0 || seat >= state.getRows() * state.getColumns()) {
             throw new IllegalArgumentException("Posición incorrecta.");
         }
-        Set<Integer> aisles = new HashSet<>(state.aisles());
+        Set<Integer> aisles = new HashSet<>(state.getAisles());
         if (aisle) {
             aisles.add(seat);
         } else {
             aisles.remove(seat);
         }
         List<Student> students = new ArrayList<>();
-        for (Student student : state.students()) {
+        for (Student student : state.getStudents()) {
             // Un pupitre convertido en pasillo deja al alumno en «Sin asiento».
-            if (aisle && Integer.valueOf(seat).equals(student.seat())) {
-                students.add(new Student(student.id(), student.name(), student.completed(), null));
+            if (aisle && Integer.valueOf(seat).equals(student.getSeat())) {
+                students.add(
+                        new Student(
+                                student.getId(), student.getName(), student.getCompleted(), null));
             } else {
                 students.add(student);
             }
         }
         commit(
                 new Classroom(
-                        state.rows(),
-                        state.columns(),
-                        state.activities(),
+                        state.getRows(),
+                        state.getColumns(),
+                        state.getActivities(),
                         students,
-                        state.inverted(),
+                        state.isInverted(),
                         aisles));
     }
 }

@@ -5,6 +5,7 @@ import es.jsotera.heterminado.model.Classroom;
 import es.jsotera.heterminado.model.Student;
 import es.jsotera.heterminado.service.ClassroomService;
 import es.jsotera.heterminado.service.PresenceService;
+import es.jsotera.heterminado.web.request.*;
 
 import io.javalin.Javalin;
 import io.javalin.http.*;
@@ -26,42 +27,144 @@ public class ClassroomController {
         this.service = service;
     }
 
-    // Cada record representa los datos JSON que envía un formulario del navegador.
-    public record NameRequest(String name) {}
-
-    public record ActivityRequest(String title) {}
-
-    public record ProgressRequest(Boolean completed) {}
-
-    public record LayoutRequest(int rows, int columns) {}
-
-    public record SeatRequest(Integer seat) {}
-
-    public record ViewRequest(Boolean inverted) {}
-
-    public record AisleRequest(Boolean aisle) {}
-
     /** Igual que en HolaJavalin: cada ruta apunta a un método que recibe Context. */
     public void routes(Javalin app) {
-        app.before(this::checkRequest);
+        app.before(
+                new Handler() {
+                    @Override
+                    public void handle(Context ctx) {
+                        checkRequest(ctx);
+                    }
+                });
         // Las respuestas dinámicas no se guardan. Los estáticos se configuran en Main.
-        app.after(ctx -> ctx.header("Cache-Control", "no-store"));
-        app.get("/", ctx -> ctx.redirect("/index"));
-        app.get("/index", this::index);
-        app.get("/api/state", this::state);
-        app.post("/api/student", this::registerStudent);
-        app.put("/api/progress/{id}", this::updateProgress);
-        app.post("/api/activities", this::addActivity);
-        app.delete("/api/activities/{id}", this::deleteActivity);
-        app.put("/api/layout", this::resizeClassroom);
-        app.put("/api/view", this::updateView);
-        app.put("/api/aisles/{seat}", this::updateAisle);
-        app.put("/api/seats/{id}", this::moveStudent);
-        app.post("/api/reset", this::resetProgress);
+        app.after(
+                new Handler() {
+                    @Override
+                    public void handle(Context ctx) {
+                        ctx.header("Cache-Control", "no-store");
+                    }
+                });
+        app.get(
+                "/",
+                new Handler() {
+                    @Override
+                    public void handle(Context ctx) {
+                        ctx.redirect("/index");
+                    }
+                });
+        app.get(
+                "/index",
+                new Handler() {
+                    @Override
+                    public void handle(Context ctx) {
+                        index(ctx);
+                    }
+                });
+        app.get(
+                "/api/state",
+                new Handler() {
+                    @Override
+                    public void handle(Context ctx) {
+                        state(ctx);
+                    }
+                });
+        app.post(
+                "/api/student",
+                new Handler() {
+                    @Override
+                    public void handle(Context ctx) {
+                        registerStudent(ctx);
+                    }
+                });
+        app.put(
+                "/api/progress/{id}",
+                new Handler() {
+                    @Override
+                    public void handle(Context ctx) {
+                        updateProgress(ctx);
+                    }
+                });
+        app.post(
+                "/api/activities",
+                new Handler() {
+                    @Override
+                    public void handle(Context ctx) {
+                        addActivity(ctx);
+                    }
+                });
+        app.delete(
+                "/api/activities/{id}",
+                new Handler() {
+                    @Override
+                    public void handle(Context ctx) {
+                        deleteActivity(ctx);
+                    }
+                });
+        app.put(
+                "/api/layout",
+                new Handler() {
+                    @Override
+                    public void handle(Context ctx) {
+                        resizeClassroom(ctx);
+                    }
+                });
+        app.put(
+                "/api/view",
+                new Handler() {
+                    @Override
+                    public void handle(Context ctx) {
+                        updateView(ctx);
+                    }
+                });
+        app.put(
+                "/api/aisles/{seat}",
+                new Handler() {
+                    @Override
+                    public void handle(Context ctx) {
+                        updateAisle(ctx);
+                    }
+                });
+        app.put(
+                "/api/seats/{id}",
+                new Handler() {
+                    @Override
+                    public void handle(Context ctx) {
+                        moveStudent(ctx);
+                    }
+                });
+        app.post(
+                "/api/reset",
+                new Handler() {
+                    @Override
+                    public void handle(Context ctx) {
+                        resetProgress(ctx);
+                    }
+                });
 
-        app.exception(IllegalArgumentException.class, this::invalidData);
-        app.exception(HttpResponseException.class, this::httpError);
-        app.exception(Exception.class, this::unexpectedError);
+        app.exception(
+                IllegalArgumentException.class,
+                new ExceptionHandler<IllegalArgumentException>() {
+                    @Override
+                    public void handle(IllegalArgumentException exception, Context ctx) {
+                        invalidData(exception, ctx);
+                    }
+                });
+        app.exception(
+                HttpResponseException.class,
+                new ExceptionHandler<HttpResponseException>() {
+                    @Override
+                    public void handle(HttpResponseException exception, Context ctx) {
+                        httpError(exception, ctx);
+                    }
+                });
+        app.exception(
+                Exception.class,
+                new ExceptionHandler<Exception>() {
+                    @Override
+                    public void handle(Exception exception, Context ctx) {
+                        unexpectedError(exception, ctx);
+                    }
+                });
     }
 
     private void index(Context ctx) {
@@ -78,15 +181,15 @@ public class ClassroomController {
         if (TeacherAccess.isTeacher(ctx)) {
             result.put("role", "teacher");
             result.put("classroom", classroom);
-            result.put("onlineStudentIds", presence.onlineStudentIds(classroom.students()));
+            result.put("onlineStudentIds", presence.onlineStudentIds(classroom.getStudents()));
         } else {
             Student student = service.student(ctx.cookie(COOKIE));
             if (student != null) {
                 // La consulta periódica del alumno funciona también como latido.
-                presence.markSeen(student.id());
+                presence.markSeen(student.getId());
             }
             result.put("role", "student");
-            result.put("activities", classroom.activities());
+            result.put("activities", classroom.getActivities());
             result.put("student", student);
         }
         ctx.json(result);
@@ -97,13 +200,13 @@ public class ClassroomController {
             throw new ForbiddenResponse("Estás en la vista del profesorado.");
         }
         NameRequest request = ctx.bodyAsClass(NameRequest.class);
-        Student student = service.register(ctx.cookie(COOKIE), request.name());
-        presence.markSeen(student.id());
+        Student student = service.register(ctx.cookie(COOKIE), request.getName());
+        presence.markSeen(student.getId());
         ctx.header(
                 "Set-Cookie",
                 COOKIE
                         + "="
-                        + student.id()
+                        + student.getId()
                         + "; Path=/; Max-Age=31536000; HttpOnly; SameSite=Strict"
                         + (ctx.req().isSecure() ? "; Secure" : ""));
         ctx.json(student);
@@ -115,10 +218,10 @@ public class ClassroomController {
         }
         String id = studentId(ctx);
         ProgressRequest request = ctx.bodyAsClass(ProgressRequest.class);
-        if (request.completed() == null) {
+        if (request.getCompleted() == null) {
             throw new BadRequestResponse("Falta el estado.");
         }
-        service.complete(id, ctx.pathParam("id"), request.completed());
+        service.complete(id, ctx.pathParam("id"), request.getCompleted());
         presence.markSeen(id);
         ctx.status(204);
     }
@@ -126,7 +229,7 @@ public class ClassroomController {
     private void addActivity(Context ctx) {
         teacher(ctx);
         ActivityRequest request = ctx.bodyAsClass(ActivityRequest.class);
-        service.addActivity(request.title());
+        service.addActivity(request.getTitle());
         ctx.status(204);
     }
 
@@ -139,34 +242,34 @@ public class ClassroomController {
     private void resizeClassroom(Context ctx) {
         teacher(ctx);
         LayoutRequest request = ctx.bodyAsClass(LayoutRequest.class);
-        service.resize(request.rows(), request.columns());
+        service.resize(request.getRows(), request.getColumns());
         ctx.status(204);
     }
 
     private void moveStudent(Context ctx) {
         teacher(ctx);
         SeatRequest request = ctx.bodyAsClass(SeatRequest.class);
-        service.move(ctx.pathParam("id"), request.seat());
+        service.move(ctx.pathParam("id"), request.getSeat());
         ctx.status(204);
     }
 
     private void updateView(Context ctx) {
         teacher(ctx);
         ViewRequest request = ctx.bodyAsClass(ViewRequest.class);
-        if (request.inverted() == null) {
+        if (request.getInverted() == null) {
             throw new BadRequestResponse("Falta la orientación del aula.");
         }
-        service.setInverted(request.inverted());
+        service.setInverted(request.getInverted());
         ctx.status(204);
     }
 
     private void updateAisle(Context ctx) {
         teacher(ctx);
         AisleRequest request = ctx.bodyAsClass(AisleRequest.class);
-        if (request.aisle() == null) {
+        if (request.getAisle() == null) {
             throw new BadRequestResponse("Falta el estado del pasillo.");
         }
-        service.setAisle(Integer.parseInt(ctx.pathParam("seat")), request.aisle());
+        service.setAisle(Integer.parseInt(ctx.pathParam("seat")), request.getAisle());
         ctx.status(204);
     }
 

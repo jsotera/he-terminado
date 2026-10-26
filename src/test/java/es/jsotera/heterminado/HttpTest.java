@@ -2,6 +2,8 @@ package es.jsotera.heterminado;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+import io.javalin.Javalin;
+
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -14,11 +16,11 @@ class HttpTest {
 
     @Test
     void servesTemplatesAssetsAndProtectsChanges() throws Exception {
-        var app = Main.create(temp.resolve("aula.xml")).start("127.0.0.1", 0);
+        Javalin app = Main.create(temp.resolve("aula.xml")).start("127.0.0.1", 0);
         try {
-            var client = HttpClient.newHttpClient();
+            HttpClient client = HttpClient.newHttpClient();
             String base = "http://127.0.0.1:" + app.port();
-            var index =
+            HttpResponse<String> index =
                     client.send(
                             HttpRequest.newBuilder(URI.create(base + "/index")).build(),
                             HttpResponse.BodyHandlers.ofString());
@@ -53,7 +55,7 @@ class HttpTest {
                                             .build(),
                                     HttpResponse.BodyHandlers.ofString())
                             .statusCode());
-            var added =
+            HttpResponse<String> added =
                     client.send(
                             HttpRequest.newBuilder(URI.create(base + "/api/activities"))
                                     .header("Content-Type", "application/json")
@@ -63,7 +65,7 @@ class HttpTest {
                                     .build(),
                             HttpResponse.BodyHandlers.ofString());
             assertEquals(204, added.statusCode(), added.body());
-            var state =
+            HttpResponse<String> state =
                     client.send(
                             HttpRequest.newBuilder(URI.create(base + "/api/state"))
                                     .header("X-Forwarded-For", "192.168.1.30")

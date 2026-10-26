@@ -2,12 +2,16 @@ package es.jsotera.heterminado.config;
 
 import io.javalin.config.JavalinConfig;
 
+import org.eclipse.jetty.server.Connector;
 import org.eclipse.jetty.server.HttpConfiguration;
 import org.eclipse.jetty.server.HttpConnectionFactory;
 import org.eclipse.jetty.server.SecureRequestCustomizer;
+import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.server.ServerConnector;
 import org.eclipse.jetty.server.SslConnectionFactory;
 import org.eclipse.jetty.util.ssl.SslContextFactory;
+
+import java.util.function.BiFunction;
 
 /** HTTPS directo y opcional: conserva la IP real del alumnado. */
 public final class HttpsConfig {
@@ -33,17 +37,20 @@ public final class HttpsConfig {
         ssl.setKeyStoreType("PKCS12");
         ssl.setKeyStorePassword(password);
         config.jetty.addConnector(
-                (server, httpConfig) -> {
-                    HttpConfiguration https = new HttpConfiguration(httpConfig);
-                    https.addCustomizer(new SecureRequestCustomizer());
-                    ServerConnector connector =
-                            new ServerConnector(
-                                    server,
-                                    new SslConnectionFactory(ssl, "http/1.1"),
-                                    new HttpConnectionFactory(https));
-                    connector.setHost("0.0.0.0");
-                    connector.setPort(port());
-                    return connector;
+                new BiFunction<Server, HttpConfiguration, Connector>() {
+                    @Override
+                    public Connector apply(Server server, HttpConfiguration httpConfig) {
+                        HttpConfiguration https = new HttpConfiguration(httpConfig);
+                        https.addCustomizer(new SecureRequestCustomizer());
+                        ServerConnector connector =
+                                new ServerConnector(
+                                        server,
+                                        new SslConnectionFactory(ssl, "http/1.1"),
+                                        new HttpConnectionFactory(https));
+                        connector.setHost("0.0.0.0");
+                        connector.setPort(port());
+                        return connector;
+                    }
                 });
     }
 }

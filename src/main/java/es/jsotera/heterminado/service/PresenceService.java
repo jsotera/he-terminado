@@ -36,9 +36,9 @@ public class PresenceService {
         long now = clock.millis();
         Set<String> online = new HashSet<>();
         for (Student student : students) {
-            Long last = lastSeen.get(student.id());
+            Long last = lastSeen.get(student.getId());
             if (last != null && now - last < timeoutMillis) {
-                online.add(student.id());
+                online.add(student.getId());
             }
         }
         return online;

@@ -4,7 +4,6 @@ const installButton = document.getElementById("install-app");
 const installHelp = document.getElementById("install-help");
 const standalone = window.matchMedia("(display-mode: standalone)");
 let installPrompt;
-
 function showInstallHelp() {
   if (!installHelp) return;
   installHelp.hidden =
@@ -20,13 +19,12 @@ function showInstallHelp() {
       "Puedes instalar la app desde el menú del navegador. Necesita conexión con el aula.";
   }
 }
-
-window.addEventListener("beforeinstallprompt", (event) => {
+window.addEventListener("beforeinstallprompt", function (event) {
   event.preventDefault();
   installPrompt = event;
   installButton.hidden = standalone.matches;
 });
-installButton.addEventListener("click", async () => {
+installButton.addEventListener("click", async function () {
   if (!installPrompt) return;
   installButton.disabled = true;
   try {
@@ -43,18 +41,19 @@ installButton.addEventListener("click", async () => {
     installButton.disabled = false;
   }
 });
-window.addEventListener("appinstalled", () => {
+window.addEventListener("appinstalled", function () {
   installPrompt = null;
   installButton.hidden = true;
   if (installHelp) installHelp.hidden = true;
 });
 standalone.addEventListener("change", showInstallHelp);
 showInstallHelp();
-
 if (window.isSecureContext && "serviceWorker" in navigator) {
   navigator.serviceWorker
-    .register("/sw.js", { updateViaCache: "none" })
-    .catch(() => {
+    .register("/sw.js", {
+      updateViaCache: "none",
+    })
+    .catch(function () {
       if (installHelp)
         installHelp.textContent =
           "No se pudo preparar la instalación. Recarga la página con conexión al aula.";

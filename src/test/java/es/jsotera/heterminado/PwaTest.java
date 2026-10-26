@@ -2,11 +2,15 @@ package es.jsotera.heterminado;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+
+import io.javalin.Javalin;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
+import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -21,9 +25,9 @@ class PwaTest {
 
     @Test
     void pwaResourcesBypassHttpCacheAndIconsMatchManifest() throws Exception {
-        var app = Main.create(temp.resolve("aula.xml")).start("127.0.0.1", 0);
+        Javalin app = Main.create(temp.resolve("aula.xml")).start("127.0.0.1", 0);
         try {
-            var client = HttpClient.newHttpClient();
+            HttpClient client = HttpClient.newHttpClient();
             String base = "http://127.0.0.1:" + app.port();
             for (String path :
                     new String[] {
@@ -35,7 +39,7 @@ class PwaTest {
                         "/manifest.webmanifest",
                         "/api/state"
                     }) {
-                var response =
+                HttpResponse<String> response =
                         client.send(
                                 HttpRequest.newBuilder(URI.create(base + path)).build(),
                                 HttpResponse.BodyHandlers.ofString());
@@ -45,7 +49,7 @@ class PwaTest {
                         response.headers().firstValue("Cache-Control").orElse(""),
                         path);
             }
-            var response =
+            HttpResponse<String> response =
                     client.send(
                             HttpRequest.newBuilder(URI.create(base + "/manifest.webmanifest"))
                                     .build(),
@@ -55,18 +59,18 @@ class PwaTest {
                             .firstValue("Content-Type")
                             .orElse("")
                             .contains("application/manifest+json"));
-            var manifest = new ObjectMapper().readTree(response.body());
+            JsonNode manifest = new ObjectMapper().readTree(response.body());
             assertEquals("/index", manifest.get("start_url").asText());
             assertEquals("standalone", manifest.get("display").asText());
-            for (var icon : manifest.get("icons")) {
-                var png =
+            for (JsonNode icon : manifest.get("icons")) {
+                HttpResponse<byte[]> png =
                         client.send(
                                 HttpRequest.newBuilder(URI.create(base + icon.get("src").asText()))
                                         .build(),
                                 HttpResponse.BodyHandlers.ofByteArray());
                 assertEquals(200, png.statusCode());
                 assertEquals("no-store", png.headers().firstValue("Cache-Control").orElse(""));
-                var image = ImageIO.read(new ByteArrayInputStream(png.body()));
+                BufferedImage image = ImageIO.read(new ByteArrayInputStream(png.body()));
                 assertNotNull(image);
                 assertEquals(
                         icon.get("sizes").asText(), image.getWidth() + "x" + image.getHeight());

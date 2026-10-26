@@ -1,5 +1,8 @@
 "use strict";
-const $ = (id) => document.getElementById(id);
+
+const $ = function (id) {
+  return document.getElementById(id);
+};
 const teacher = document.body.dataset.role === "teacher";
 const refreshInterval = Number(document.body.dataset.refreshInterval);
 let state,
@@ -10,7 +13,6 @@ let state,
 let lastView = "";
 let placingAisle = false;
 let serverAvailable = false;
-
 function setServerAvailable(available) {
   if (available && !serverAvailable) error("");
   serverAvailable = available;
@@ -30,11 +32,18 @@ async function request(path, method = "GET", body) {
   const response = await fetch(path, {
     method,
     cache: "no-store",
-    headers: method === "GET" ? {} : { "Content-Type": "application/json" },
+    headers:
+      method === "GET"
+        ? {}
+        : {
+            "Content-Type": "application/json",
+          },
     body: method === "GET" ? undefined : JSON.stringify(body ?? {}),
   });
   if (!response.ok) {
-    const details = await response.json().catch(() => ({}));
+    const details = await response.json().catch(function () {
+      return {};
+    });
     throw new Error(details.message || "No se pudo conectar con el servidor.");
   }
   return response.status === 204 ? null : response.json();
@@ -94,9 +103,11 @@ function renderTeacher() {
   $("student-count").textContent = c.students.length;
   $("activity-count").textContent = c.activities.length;
   $("finished-count").textContent = c.activities.length
-    ? c.students.filter((s) =>
-        c.activities.every((a) => s.completed.includes(a.id)),
-      ).length
+    ? c.students.filter(function (s) {
+        return c.activities.every(function (a) {
+          return s.completed.includes(a.id);
+        });
+      }).length
     : 0;
   if (
     document.activeElement !== $("rows") &&
@@ -108,20 +119,26 @@ function renderTeacher() {
   const filter = $("activity-filter"),
     oldFilter = filter.value;
   filter.replaceChildren(new Option("Todas las actividades", ""));
-  c.activities.forEach((a) => filter.add(new Option(a.title, a.id)));
-  filter.value = c.activities.some((a) => a.id === oldFilter) ? oldFilter : "";
+  c.activities.forEach(function (a) {
+    return filter.add(new Option(a.title, a.id));
+  });
+  filter.value = c.activities.some(function (a) {
+    return a.id === oldFilter;
+  })
+    ? oldFilter
+    : "";
   $("activity-list").replaceChildren();
   if (!c.activities.length)
     $("activity-list").append(
       element("p", "Añade la primera actividad para empezar.", "empty"),
     );
-  c.activities.forEach((a) => {
+  c.activities.forEach(function (a) {
     const row = element("div", undefined, "activity-row");
     row.append(element("span", a.title));
     const remove = element("button", "×", "icon-button");
     remove.type = "button";
     remove.setAttribute("aria-label", "Eliminar " + a.title);
-    remove.onclick = () => {
+    remove.onclick = function () {
       if (confirm("¿Eliminar «" + a.title + "» y su progreso?"))
         mutate("/api/activities/" + a.id, "DELETE");
     };
@@ -148,7 +165,9 @@ function studentCard(s) {
   const done = filter
     ? s.completed.includes(filter)
     : activities.length > 0 &&
-      activities.every((a) => s.completed.includes(a.id));
+      activities.every(function (a) {
+        return s.completed.includes(a.id);
+      });
   const card = element(
     "button",
     undefined,
@@ -177,7 +196,7 @@ function studentCard(s) {
     ),
   );
   const checklist = element("span", undefined, "card-activities");
-  activities.forEach((activity) => {
+  activities.forEach(function (activity) {
     const completed = s.completed.includes(activity.id);
     const status = completed ? "Terminada" : "Pendiente";
     const row = element(
@@ -198,7 +217,7 @@ function studentCard(s) {
     checklist.append(row);
   });
   card.append(checklist);
-  card.onclick = (event) => {
+  card.onclick = function (event) {
     event.stopPropagation();
     if (placingAisle && s.seat !== null) {
       placeAisle(s.seat);
@@ -206,29 +225,37 @@ function studentCard(s) {
     }
     selectStudent(s);
   };
-  card.ondragstart = (event) => {
+  card.ondragstart = function (event) {
     dragging = true;
     event.dataTransfer.setData("text/plain", s.id);
     event.dataTransfer.effectAllowed = "move";
   };
-  card.ondragend = () => {
+  card.ondragend = function () {
     dragging = false;
   };
   return card;
 }
 function dropTarget(node, seat) {
-  const move = (id) => {
-    if (!id || !state.classroom.students.some((s) => s.id === id)) return;
+  const move = function (id) {
+    if (
+      !id ||
+      !state.classroom.students.some(function (s) {
+        return s.id === id;
+      })
+    )
+      return;
     selectedStudent = null;
-    mutate("/api/seats/" + id, "PUT", { seat });
+    mutate("/api/seats/" + id, "PUT", {
+      seat,
+    });
   };
-  node.ondragover = (e) => {
+  node.ondragover = function (e) {
     const aisle = e.dataTransfer.types.includes("application/x-classroom-tool");
     if (aisle && seat === null) return;
     e.preventDefault();
     e.dataTransfer.dropEffect = aisle ? "copy" : "move";
   };
-  node.ondrop = (e) => {
+  node.ondrop = function (e) {
     e.preventDefault();
     dragging = false;
     if (e.dataTransfer.getData("application/x-classroom-tool") === "aisle") {
@@ -237,12 +264,12 @@ function dropTarget(node, seat) {
     }
     move(e.dataTransfer.getData("text/plain"));
   };
-  const activate = () => {
+  const activate = function () {
     if (placingAisle && seat !== null) placeAisle(seat);
     else move(selectedStudent);
   };
   node.onclick = activate;
-  node.onkeydown = (e) => {
+  node.onkeydown = function (e) {
     if (e.target === node && (e.key === "Enter" || e.key === " ")) {
       e.preventDefault();
       activate();
@@ -252,7 +279,9 @@ function dropTarget(node, seat) {
 function placeAisle(seat) {
   placingAisle = false;
   selectedStudent = null;
-  mutate("/api/aisles/" + seat, "PUT", { aisle: true });
+  mutate("/api/aisles/" + seat, "PUT", {
+    aisle: true,
+  });
 }
 function aisleCell(seat) {
   const node = element("div", undefined, "aisle");
@@ -261,7 +290,11 @@ function aisleCell(seat) {
   const remove = element("button", "×", "icon-button");
   remove.type = "button";
   remove.setAttribute("aria-label", "Quitar pasillo y recuperar pupitre");
-  remove.onclick = () => mutate("/api/aisles/" + seat, "PUT", { aisle: false });
+  remove.onclick = function () {
+    return mutate("/api/aisles/" + seat, "PUT", {
+      aisle: false,
+    });
+  };
   node.append(remove);
   // No añadimos dropTarget: un pasillo no admite alumnado.
   return node;
@@ -277,7 +310,10 @@ function seatLabels(classroom) {
       // Una fila solo cuenta cuando encontramos su primer pupitre.
       if (deskColumn === 0) deskRow++;
       deskColumn++;
-      labels.set(seat, { row: deskRow, column: deskColumn });
+      labels.set(seat, {
+        row: deskRow,
+        column: deskColumn,
+      });
     }
   }
   return labels;
@@ -286,7 +322,9 @@ function renderSeats() {
   const c = state.classroom;
   if (
     selectedStudent &&
-    !c.students.some((s) => s.id === selectedStudent && isOnline(s))
+    !c.students.some(function (s) {
+      return s.id === selectedStudent && isOnline(s);
+    })
   ) {
     selectedStudent = null;
   }
@@ -317,7 +355,9 @@ function renderSeats() {
     node.append(
       element("span", label.row + " · " + label.column, "seat-number"),
     );
-    const student = c.students.find((s) => s.seat === i);
+    const student = c.students.find(function (s) {
+      return s.seat === i;
+    });
     if (student && isVisible(student)) node.append(studentCard(student));
     else node.append(element("span", student ? "Reservado" : "Libre", "free"));
     dropTarget(node, i);
@@ -326,12 +366,18 @@ function renderSeats() {
   const unseated = $("unseated");
   unseated.replaceChildren();
   c.students
-    .filter((s) => s.seat === null && isVisible(s))
-    .forEach((s) => unseated.append(studentCard(s)));
+    .filter(function (s) {
+      return s.seat === null && isVisible(s);
+    })
+    .forEach(function (s) {
+      return unseated.append(studentCard(s));
+    });
   if (!unseated.childElementCount)
     unseated.append(element("p", "Sin alumnado pendiente de colocar.", "hint"));
   dropTarget(unseated, null);
-  const selected = c.students.find((s) => s.id === selectedStudent);
+  const selected = c.students.find(function (s) {
+    return s.id === selectedStudent;
+  });
   $("selection").textContent = placingAisle
     ? "Pasillo seleccionado: pulsa un pupitre para convertirlo en pasillo."
     : selected
@@ -354,7 +400,7 @@ function renderStudent() {
     : "Tu profesor todavía no ha añadido actividades.";
   const list = $("student-activities");
   list.replaceChildren();
-  state.activities.forEach((a) => {
+  state.activities.forEach(function (a) {
     const done = s.completed.includes(a.id);
     const label = element(
       "label",
@@ -364,8 +410,10 @@ function renderStudent() {
     const input = element("input");
     input.type = "checkbox";
     input.checked = done;
-    input.onchange = () => {
-      mutate("/api/progress/" + a.id, "PUT", { completed: input.checked });
+    input.onchange = function () {
+      mutate("/api/progress/" + a.id, "PUT", {
+        completed: input.checked,
+      });
     };
     const text = element("div");
     text.append(
@@ -384,7 +432,7 @@ if (teacher) {
   } catch (e) {
     /* El navegador puede desactivar el almacenamiento local. */
   }
-  $("hide-offline").onchange = () => {
+  $("hide-offline").onchange = function () {
     try {
       localStorage.setItem(
         "heterminado_hide_offline",
@@ -395,31 +443,33 @@ if (teacher) {
     }
     renderSeats();
   };
-  $("invert-view").onchange = async () => {
+  $("invert-view").onchange = async function () {
     const checkbox = $("invert-view");
     checkbox.disabled = true;
     try {
-      await mutate("/api/view", "PUT", { inverted: checkbox.checked });
+      await mutate("/api/view", "PUT", {
+        inverted: checkbox.checked,
+      });
     } finally {
       checkbox.disabled = false;
       renderSeats();
     }
   };
-  $("aisle-tool").onclick = () => {
+  $("aisle-tool").onclick = function () {
     placingAisle = !placingAisle;
     selectedStudent = null;
     renderSeats();
   };
-  $("aisle-tool").ondragstart = (event) => {
+  $("aisle-tool").ondragstart = function (event) {
     dragging = true;
     event.dataTransfer.setData("application/x-classroom-tool", "aisle");
     event.dataTransfer.setData("text/plain", "Pasillo");
     event.dataTransfer.effectAllowed = "copy";
   };
-  $("aisle-tool").ondragend = () => {
+  $("aisle-tool").ondragend = function () {
     dragging = false;
   };
-  $("activity-form").onsubmit = async (e) => {
+  $("activity-form").onsubmit = async function (e) {
     e.preventDefault();
     if (
       await mutate("/api/activities", "POST", {
@@ -428,7 +478,7 @@ if (teacher) {
     )
       $("activity-title").value = "";
   };
-  $("layout-form").onsubmit = (e) => {
+  $("layout-form").onsubmit = function (e) {
     e.preventDefault();
     mutate("/api/layout", "PUT", {
       rows: Number($("rows").value),
@@ -436,7 +486,7 @@ if (teacher) {
     });
   };
   $("activity-filter").onchange = renderSeats;
-  $("reset").onclick = () => {
+  $("reset").onclick = function () {
     if (
       confirm(
         "¿Marcar todas las actividades como pendientes para todo el alumnado?",
@@ -445,22 +495,24 @@ if (teacher) {
       mutate("/api/reset", "POST");
   };
 } else {
-  $("name-form").onsubmit = async (e) => {
+  $("name-form").onsubmit = async function (e) {
     e.preventDefault();
     if (
-      await mutate("/api/student", "POST", { name: $("student-name").value })
+      await mutate("/api/student", "POST", {
+        name: $("student-name").value,
+      })
     ) {
       editingName = false;
       renderStudent();
     }
   };
-  $("change-name").onclick = () => {
+  $("change-name").onclick = function () {
     editingName = true;
     $("student-name").value = state.student.name;
     renderStudent();
     $("student-name").focus();
   };
-  $("cancel-name").onclick = () => {
+  $("cancel-name").onclick = function () {
     editingName = false;
     renderStudent();
   };
@@ -468,7 +520,7 @@ if (teacher) {
 refresh();
 setInterval(refresh, refreshInterval);
 window.addEventListener("online", refresh);
-window.addEventListener("offline", () => {
+window.addEventListener("offline", function () {
   setServerAvailable(false);
   $("connection").textContent = "● Sin conexión · reintentando";
   error("Sin conexión con el servidor. Reconecta para continuar.");

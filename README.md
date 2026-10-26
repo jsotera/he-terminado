@@ -130,12 +130,14 @@ src/main/java/es/jsotera/heterminado/
   Main.java                   Arranque y configuración
   config/Conf                 Intervalo de actualización y tiempo de desconexión
   config/HttpsConfig          HTTPS directo opcional mediante certificado PKCS12
-  model/                      Records: Activity, Student, Classroom
+  config/WebConfig            Clase que configura Javalin y FreeMarker
+  model/                      Clases: Activity, Student, Classroom
   repository/XmlRepository    Lectura y escritura XML con DOM
   service/ClassroomService    Reglas del aula y cambios de estado
   service/PresenceService     Última conexión de cada alumno, en memoria
   web/ClassroomController    Rutas HTTP y validación de acceso
   web/TeacherAccess          Comparación de IP
+  web/request/               Clases con los datos JSON de cada petición
 src/main/resources/
   templates/index.ftl         Vista FreeMarker según el rol
   public/app.js               Peticiones fetch, refresco y drag & drop
@@ -147,7 +149,11 @@ src/main/resources/
 src/test/java/                Pruebas de reglas, persistencia y HTTP
 ```
 
-Se emplean records de Java 17, listas y conjuntos, bucles `for`, métodos sincronizados y JavaScript sin frameworks. Los records agrupan datos sin escribir constructores y getters a mano: por ejemplo, `student.name()` devuelve el nombre. Al modificar un alumno se crea un nuevo record; así, los datos que se consultan no pueden cambiar mientras se guarda el XML.
+Se emplean clases tradicionales con atributos privados, constructores y getters, listas y conjuntos, bucles `for`, métodos sincronizados y JavaScript sin frameworks. Por ejemplo, `student.getName()` devuelve el nombre. Los modelos no tienen setters: al modificar un alumno se construye otro objeto, conservando la protección de los datos que se están consultando o guardando. `equals` y `hashCode` comparan el contenido de los modelos, también al comprobar la persistencia.
+
+Las clases de `web/request` sí incluyen constructor vacío, getters y setters: Jackson crea estos objetos al leer el JSON del navegador. El JSON y el formato XML son los mismos que antes de esta adaptación.
+
+El código Java, incluidas las pruebas, no usa lambdas, referencias a métodos, Stream API ni `var`. Las rutas se registran con implementaciones explícitas de `Handler`; `WebConfig` implementa `Consumer<JavalinConfig>` y configura el servidor mediante su método `accept`. Estas interfaces pertenecen a Javalin y a Java y se implementan con clases, sin expresiones lambda. JavaScript utiliza funciones declaradas con `function`, sin funciones flecha.
 
 No hay base de datos, contenedor de dependencias ni herramientas de compilación de frontend. FreeMarker escapa el HTML con la directiva `output_format="HTML" auto_esc=true` de la plantilla y JavaScript incorpora los nombres con `textContent`.
 
@@ -155,7 +161,7 @@ No hay base de datos, contenedor de dependencias ni herramientas de compilación
 
 La estructura de arranque y rutas sigue el ejemplo de [HolaJavalin](https://github.com/aetxabao/HolaJavalin/tree/e969e193678ca2eb3316a8acb8ed9a923ac4367e): `Main`, configuración mediante `Javalin.create(...)`, recursos en `/public`, plantillas `.ftl` en `/templates` y rutas `app.get(...)`, `app.post(...)`, etc. que apuntan a métodos con un parámetro `Context`.
 
-El controlador registra las rutas en `routes(app)`. Cada método lee los datos de la petición, llama al servicio y prepara la respuesta. En `index`, un `HashMap` contiene el modelo que recibe FreeMarker, como en el ejemplo de saludo.
+El controlador registra las rutas en `routes(app)` mediante objetos `Handler` cuyo método `handle(Context ctx)` llama al método correspondiente del controlador. Cada método lee los datos de la petición, llama al servicio y prepara la respuesta. En `index`, un `HashMap` contiene el modelo que recibe FreeMarker, como en el ejemplo de saludo.
 
 El POM conserva Java 17, la versión de proyecto `1.0-SNAPSHOT` y todas las dependencias del ejemplo con sus mismas versiones:
 
