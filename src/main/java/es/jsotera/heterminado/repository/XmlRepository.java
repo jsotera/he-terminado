@@ -39,6 +39,19 @@ public class XmlRepository {
             int columns = Integer.parseInt(root.getAttribute("columns"));
             if (rows < 1 || rows > 12 || columns < 1 || columns > 12)
                 throw new IllegalArgumentException("Dimensiones incorrectas");
+            String invertedValue = root.getAttribute("inverted");
+            if (!invertedValue.isEmpty()
+                    && !invertedValue.equals("true")
+                    && !invertedValue.equals("false"))
+                throw new IllegalArgumentException("Orientación incorrecta");
+            boolean inverted = Boolean.parseBoolean(invertedValue);
+            Set<Integer> aisles = new HashSet<>();
+            NodeList aisleNodes = root.getElementsByTagName("aisle");
+            for (int i = 0; i < aisleNodes.getLength(); i++) {
+                int seat = Integer.parseInt(((Element) aisleNodes.item(i)).getAttribute("seat"));
+                if (seat < 0 || seat >= rows * columns || !aisles.add(seat))
+                    throw new IllegalArgumentException("Pasillo incorrecto");
+            }
             List<Activity> activities = new ArrayList<>();
             List<Student> students = new ArrayList<>();
             Set<String> activityIds = new HashSet<>(), studentIds = new HashSet<>();
@@ -61,7 +74,11 @@ public class XmlRepository {
                     throw new IllegalArgumentException("Alumno incorrecto");
                 Integer seat =
                         e.hasAttribute("seat") ? Integer.valueOf(e.getAttribute("seat")) : null;
-                if (seat != null && (seat < 0 || seat >= rows * columns || !seats.add(seat)))
+                if (seat != null
+                        && (seat < 0
+                                || seat >= rows * columns
+                                || aisles.contains(seat)
+                                || !seats.add(seat)))
                     throw new IllegalArgumentException("Asiento incorrecto");
                 Set<String> completed = new HashSet<>();
                 NodeList done = e.getElementsByTagName("done");
@@ -74,7 +91,7 @@ public class XmlRepository {
                 students.add(
                         new Student(e.getAttribute("id"), e.getAttribute("name"), completed, seat));
             }
-            return new Classroom(rows, columns, activities, students);
+            return new Classroom(rows, columns, activities, students, inverted, aisles);
         } catch (Exception e) {
             throw new IllegalStateException(
                     "No se pudo leer " + file + ". Revisa el XML antes de arrancar.", e);
@@ -90,6 +107,14 @@ public class XmlRepository {
             doc.appendChild(root);
             root.setAttribute("rows", "" + state.rows());
             root.setAttribute("columns", "" + state.columns());
+            root.setAttribute("inverted", "" + state.inverted());
+            Element aisles = doc.createElement("aisles");
+            root.appendChild(aisles);
+            for (Integer seat : new TreeSet<>(state.aisles())) {
+                Element aisle = doc.createElement("aisle");
+                aisle.setAttribute("seat", "" + seat);
+                aisles.appendChild(aisle);
+            }
             Element activities = doc.createElement("activities");
             root.appendChild(activities);
             for (Activity a : state.activities()) {

@@ -106,6 +106,91 @@ class ClassroomTest {
     }
 
     @Test
+    void invertedViewDoesNotChangeSeatsAndSurvivesOtherEdits() {
+        var service = service();
+        var student = service.register(null, "Ana");
+        service.move(student.id(), 7);
+        service.setInverted(true);
+        service.setAisle(2, true);
+        service.addActivity("Uno");
+        String activity = service.snapshot().activities().get(0).id();
+        service.complete(student.id(), activity, true);
+        service.register(student.id(), "Ana García");
+        service.deleteActivity(activity);
+        service.reset();
+        assertEquals(7, service.student(student.id()).seat());
+        assertTrue(service.snapshot().inverted());
+        assertEquals(Set.of(2), service.snapshot().aisles());
+        assertEquals(service.snapshot(), service().snapshot());
+        service.setInverted(false);
+        assertEquals(7, service.student(student.id()).seat());
+    }
+
+    @Test
+    void aisleUnseatsOccupantAndRejectsStudentUntilRemoved() {
+        var service = service();
+        var student = service.register(null, "Ana");
+        service.move(student.id(), 0);
+        service.setAisle(0, true);
+        assertNull(service.student(student.id()).seat());
+        assertThrows(IllegalArgumentException.class, () -> service.move(student.id(), 0));
+        assertNull(service.student(student.id()).seat());
+        service.setAisle(0, false);
+        service.move(student.id(), 0);
+        assertEquals(0, service.student(student.id()).seat());
+        assertThrows(IllegalArgumentException.class, () -> service.setAisle(-1, true));
+        assertThrows(IllegalArgumentException.class, () -> service.setAisle(20, true));
+    }
+
+    @Test
+    void resizePreservesAisleCoordinatesAndRemovesThoseOutside() {
+        var service = service();
+        service.setAisle(7, true);
+        service.setAisle(19, true);
+        service.resize(4, 6);
+        assertEquals(Set.of(8, 22), service.snapshot().aisles());
+        service.resize(2, 3);
+        assertEquals(Set.of(5), service.snapshot().aisles());
+        assertEquals(service.snapshot(), service().snapshot());
+    }
+
+    @Test
+    void oldXmlLoadsWithNormalViewAndNoAisles() throws Exception {
+        Files.writeString(
+                temp.resolve("aula.xml"),
+                """
+                <classroom rows="2" columns="3">
+                  <activities/>
+                  <students><student id="ana" name="Ana" seat="0"/></students>
+                </classroom>
+                """);
+        var service = service();
+        assertFalse(service.snapshot().inverted());
+        assertTrue(service.snapshot().aisles().isEmpty());
+        assertEquals(0, service.student("ana").seat());
+    }
+
+    @Test
+    void xmlRejectsStudentsInAislesAndOutOfRangeAisles() throws Exception {
+        Path file = temp.resolve("aula.xml");
+        Files.writeString(
+                file,
+                """
+                <classroom rows="2" columns="3" inverted="true">
+                  <aisles><aisle seat="0"/></aisles><activities/>
+                  <students><student id="ana" name="Ana" seat="0"/></students>
+                </classroom>
+                """);
+        assertThrows(IllegalStateException.class, this::service);
+        Files.writeString(
+                file,
+                """
+                <classroom rows="2" columns="3"><aisles><aisle seat="6"/></aisles></classroom>
+                """);
+        assertThrows(IllegalStateException.class, this::service);
+    }
+
+    @Test
     void teacherRequiresLocalConnection() {
         assertTrue(TeacherAccess.sameMachine("127.0.0.1", "127.0.0.1"));
         assertTrue(TeacherAccess.sameMachine("::1", "::1"));

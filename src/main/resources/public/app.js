@@ -7,6 +7,7 @@ let state,
   busy = false,
   dragging = false;
 let lastView = "";
+let placingAisle = false;
 function element(tag, text, className) {
   const node = document.createElement(tag);
   if (text !== undefined) node.textContent = text;
@@ -107,6 +108,7 @@ function renderTeacher() {
   renderSeats();
 }
 function selectStudent(s) {
+  placingAisle = false;
   selectedStudent = selectedStudent === s.id ? null : s.id;
   renderSeats();
 }
@@ -161,6 +163,10 @@ function studentCard(s) {
   card.append(checklist);
   card.onclick = (event) => {
     event.stopPropagation();
+    if (placingAisle && s.seat !== null) {
+      placeAisle(s.seat);
+      return;
+    }
     selectStudent(s);
   };
   card.ondragstart = (event) => {
@@ -180,21 +186,48 @@ function dropTarget(node, seat) {
     mutate("/api/seats/" + id, "PUT", { seat });
   };
   node.ondragover = (e) => {
+    const aisle = e.dataTransfer.types.includes("application/x-classroom-tool");
+    if (aisle && seat === null) return;
     e.preventDefault();
-    e.dataTransfer.dropEffect = "move";
+    e.dataTransfer.dropEffect = aisle ? "copy" : "move";
   };
   node.ondrop = (e) => {
     e.preventDefault();
     dragging = false;
+    if (e.dataTransfer.getData("application/x-classroom-tool") === "aisle") {
+      if (seat !== null) placeAisle(seat);
+      return;
+    }
     move(e.dataTransfer.getData("text/plain"));
   };
-  node.onclick = () => move(selectedStudent);
+  const activate = () => {
+    if (placingAisle && seat !== null) placeAisle(seat);
+    else move(selectedStudent);
+  };
+  node.onclick = activate;
   node.onkeydown = (e) => {
     if (e.target === node && (e.key === "Enter" || e.key === " ")) {
       e.preventDefault();
-      move(selectedStudent);
+      activate();
     }
   };
+}
+function placeAisle(seat) {
+  placingAisle = false;
+  selectedStudent = null;
+  mutate("/api/aisles/" + seat, "PUT", { aisle: true });
+}
+function aisleCell(seat) {
+  const node = element("div", undefined, "aisle");
+  node.dataset.seat = seat;
+  node.append(element("span", "Pasillo", "aisle-label"));
+  const remove = element("button", "×", "icon-button");
+  remove.type = "button";
+  remove.setAttribute("aria-label", "Quitar pasillo y recuperar pupitre");
+  remove.onclick = () => mutate("/api/aisles/" + seat, "PUT", { aisle: false });
+  node.append(remove);
+  // No añadimos dropTarget: un pasillo no admite alumnado.
+  return node;
 }
 function renderSeats() {
   const c = state.classroom;
@@ -202,8 +235,18 @@ function renderSeats() {
   seats.replaceChildren();
   // La plantilla de columnas se expresa con clases para mantener una CSP sin estilos inline.
   seats.className = "seats columns-" + c.columns;
-  for (let i = 0; i < c.rows * c.columns; i++) {
+  $("invert-view").checked = c.inverted;
+  $("aisle-tool").setAttribute("aria-pressed", String(placingAisle));
+  $("classroom-map").classList.toggle("inverted", c.inverted);
+  for (let position = 0; position < c.rows * c.columns; position++) {
+    // Reordenamos solo el dibujo; cada alumno conserva su identificador de asiento.
+    const i = c.inverted ? c.rows * c.columns - 1 - position : position;
+    if (c.aisles.includes(i)) {
+      seats.append(aisleCell(i));
+      continue;
+    }
     const node = element("div", undefined, "seat");
+    node.dataset.seat = i;
     node.tabIndex = 0;
     node.setAttribute("role", "group");
     node.setAttribute(
@@ -235,9 +278,12 @@ function renderSeats() {
     unseated.append(element("p", "Sin alumnado pendiente de colocar.", "hint"));
   dropTarget(unseated, null);
   const selected = c.students.find((s) => s.id === selectedStudent);
-  $("selection").textContent = selected
-    ? selected.name + ": pulsa el asiento de destino o su nombre para cancelar."
-    : "";
+  $("selection").textContent = placingAisle
+    ? "Pasillo seleccionado: pulsa un pupitre para convertirlo en pasillo."
+    : selected
+      ? selected.name +
+        ": pulsa el asiento de destino o su nombre para cancelar."
+      : "";
 }
 function renderStudent() {
   const s = state.student;
@@ -277,6 +323,30 @@ function renderStudent() {
   });
 }
 if (teacher) {
+  $("invert-view").onchange = async () => {
+    const checkbox = $("invert-view");
+    checkbox.disabled = true;
+    try {
+      await mutate("/api/view", "PUT", { inverted: checkbox.checked });
+    } finally {
+      checkbox.disabled = false;
+      renderSeats();
+    }
+  };
+  $("aisle-tool").onclick = () => {
+    placingAisle = !placingAisle;
+    selectedStudent = null;
+    renderSeats();
+  };
+  $("aisle-tool").ondragstart = (event) => {
+    dragging = true;
+    event.dataTransfer.setData("application/x-classroom-tool", "aisle");
+    event.dataTransfer.setData("text/plain", "Pasillo");
+    event.dataTransfer.effectAllowed = "copy";
+  };
+  $("aisle-tool").ondragend = () => {
+    dragging = false;
+  };
   $("activity-form").onsubmit = async (e) => {
     e.preventDefault();
     if (

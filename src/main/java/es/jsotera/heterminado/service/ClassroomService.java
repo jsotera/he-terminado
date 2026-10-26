@@ -65,7 +65,14 @@ public class ClassroomService {
             }
         }
         students.add(next);
-        commit(new Classroom(state.rows(), state.columns(), state.activities(), students));
+        commit(
+                new Classroom(
+                        state.rows(),
+                        state.columns(),
+                        state.activities(),
+                        students,
+                        state.inverted(),
+                        state.aisles()));
         return next;
     }
 
@@ -73,7 +80,14 @@ public class ClassroomService {
         List<Activity> activities = new ArrayList<>(state.activities());
         Activity activity = new Activity(UUID.randomUUID().toString(), text(title, 100));
         activities.add(activity);
-        commit(new Classroom(state.rows(), state.columns(), activities, state.students()));
+        commit(
+                new Classroom(
+                        state.rows(),
+                        state.columns(),
+                        activities,
+                        state.students(),
+                        state.inverted(),
+                        state.aisles()));
     }
 
     private void requireActivity(String id) {
@@ -100,7 +114,14 @@ public class ClassroomService {
             done.remove(id);
             students.add(new Student(student.id(), student.name(), done, student.seat()));
         }
-        commit(new Classroom(state.rows(), state.columns(), activities, students));
+        commit(
+                new Classroom(
+                        state.rows(),
+                        state.columns(),
+                        activities,
+                        students,
+                        state.inverted(),
+                        state.aisles()));
     }
 
     public synchronized void complete(String studentId, String activityId, boolean completed) {
@@ -123,7 +144,14 @@ public class ClassroomService {
                 students.add(student);
             }
         }
-        commit(new Classroom(state.rows(), state.columns(), state.activities(), students));
+        commit(
+                new Classroom(
+                        state.rows(),
+                        state.columns(),
+                        state.activities(),
+                        students,
+                        state.inverted(),
+                        state.aisles()));
     }
 
     public synchronized void resize(int rows, int columns) {
@@ -146,7 +174,17 @@ public class ClassroomService {
             }
             students.add(new Student(student.id(), student.name(), student.completed(), seat));
         }
-        commit(new Classroom(rows, columns, state.activities(), students));
+        Set<Integer> aisles = new HashSet<>();
+        for (Integer seat : state.aisles()) {
+            int row = seat / state.columns();
+            int column = seat % state.columns();
+            if (row < rows && column < columns) {
+                aisles.add(row * columns + column);
+            }
+        }
+        commit(
+                new Classroom(
+                        rows, columns, state.activities(), students, state.inverted(), aisles));
     }
 
     public synchronized void move(String id, Integer seat) {
@@ -156,6 +194,9 @@ public class ClassroomService {
         }
         if (seat != null && (seat < 0 || seat >= state.rows() * state.columns())) {
             throw new IllegalArgumentException("Asiento incorrecto.");
+        }
+        if (seat != null && state.aisles().contains(seat)) {
+            throw new IllegalArgumentException("No se puede colocar alumnado en un pasillo.");
         }
 
         List<Student> students = new ArrayList<>();
@@ -169,7 +210,14 @@ public class ClassroomService {
             }
             students.add(new Student(student.id(), student.name(), student.completed(), target));
         }
-        commit(new Classroom(state.rows(), state.columns(), state.activities(), students));
+        commit(
+                new Classroom(
+                        state.rows(),
+                        state.columns(),
+                        state.activities(),
+                        students,
+                        state.inverted(),
+                        state.aisles()));
     }
 
     public synchronized void reset() {
@@ -177,6 +225,54 @@ public class ClassroomService {
         for (Student student : state.students()) {
             students.add(new Student(student.id(), student.name(), Set.of(), student.seat()));
         }
-        commit(new Classroom(state.rows(), state.columns(), state.activities(), students));
+        commit(
+                new Classroom(
+                        state.rows(),
+                        state.columns(),
+                        state.activities(),
+                        students,
+                        state.inverted(),
+                        state.aisles()));
+    }
+
+    public synchronized void setInverted(boolean inverted) {
+        // Cambia solo la representación: los identificadores de asiento se conservan.
+        commit(
+                new Classroom(
+                        state.rows(),
+                        state.columns(),
+                        state.activities(),
+                        state.students(),
+                        inverted,
+                        state.aisles()));
+    }
+
+    public synchronized void setAisle(int seat, boolean aisle) {
+        if (seat < 0 || seat >= state.rows() * state.columns()) {
+            throw new IllegalArgumentException("Posición incorrecta.");
+        }
+        Set<Integer> aisles = new HashSet<>(state.aisles());
+        if (aisle) {
+            aisles.add(seat);
+        } else {
+            aisles.remove(seat);
+        }
+        List<Student> students = new ArrayList<>();
+        for (Student student : state.students()) {
+            // Un pupitre convertido en pasillo deja al alumno en «Sin asiento».
+            if (aisle && Integer.valueOf(seat).equals(student.seat())) {
+                students.add(new Student(student.id(), student.name(), student.completed(), null));
+            } else {
+                students.add(student);
+            }
+        }
+        commit(
+                new Classroom(
+                        state.rows(),
+                        state.columns(),
+                        state.activities(),
+                        students,
+                        state.inverted(),
+                        aisles));
     }
 }

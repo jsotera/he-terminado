@@ -32,6 +32,10 @@ Las opciones `-D` van antes de `-jar`. El archivo se resuelve desde la carpeta d
 4. El profesor configura filas y columnas (1–12) y arrastra cada alumno desde «Sin asiento». También puede seleccionar una tarjeta y pulsar el destino, con ratón o teclado. Al mover a un asiento ocupado se intercambian los sitios.
 5. Al reducir el aula, los alumnos que quedan fuera pasan a «Sin asiento». Los demás conservan su fila y columna.
 6. «Reiniciar progreso» pone todas las actividades como pendientes, conservando actividades, identidades y asientos. Eliminar una actividad elimina también su progreso, previa confirmación.
+7. «Invertir vista del aula» coloca la pizarra abajo y el pupitre 1·1 abajo a la derecha. Solo cambia el dibujo: las asignaciones se mantienen. Al desmarcarlo vuelve la vista original.
+8. Arrastra la ficha «Pasillo» a cualquier pupitre para convertirlo en un hueco sin número que no admite alumnado. También puedes pulsar «Pasillo» y luego el pupitre, con ratón o teclado. Si estaba ocupado, el alumno pasa a «Sin asiento». Pulsa la × del pasillo para recuperar un pupitre libre. Los demás pupitres conservan sus números.
+
+La orientación y los pasillos se guardan automáticamente en el XML. Al redimensionar, los pasillos conservan su fila y columna y se eliminan los que queden fuera.
 
 ## Identificación por IP
 
@@ -51,7 +55,8 @@ Ejemplo del formato (los identificadores se generan automáticamente):
 
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
-<classroom rows="4" columns="5">
+<classroom rows="4" columns="5" inverted="false">
+  <aisles><aisle seat="2"/></aisles>
   <activities><activity id="act-1">Ejercicio de arrays</activity></activities>
   <students>
     <student id="alumno-1" name="Ana" seat="0">
@@ -62,6 +67,7 @@ Ejemplo del formato (los identificadores se generan automáticamente):
 ```
 
 Los asientos empiezan por 0, de izquierda a derecha y de arriba abajo. Sin atributo `seat`, el alumno no tiene asiento.
+`inverted` configura la vista y `aisles` contiene las posiciones reservadas como pasillo. Los XML anteriores, sin estos datos, siguen siendo válidos: se abren con orientación normal y sin pasillos.
 
 ## Organización para clase
 

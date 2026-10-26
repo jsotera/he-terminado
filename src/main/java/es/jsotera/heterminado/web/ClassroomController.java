@@ -34,6 +34,10 @@ public class ClassroomController {
 
     public record SeatRequest(Integer seat) {}
 
+    public record ViewRequest(Boolean inverted) {}
+
+    public record AisleRequest(Boolean aisle) {}
+
     /** Igual que en HolaJavalin: cada ruta apunta a un método que recibe Context. */
     public void routes(Javalin app) {
         app.before(this::checkRequest);
@@ -45,6 +49,8 @@ public class ClassroomController {
         app.post("/api/activities", this::addActivity);
         app.delete("/api/activities/{id}", this::deleteActivity);
         app.put("/api/layout", this::resizeClassroom);
+        app.put("/api/view", this::updateView);
+        app.put("/api/aisles/{seat}", this::updateAisle);
         app.put("/api/seats/{id}", this::moveStudent);
         app.post("/api/reset", this::resetProgress);
 
@@ -129,6 +135,26 @@ public class ClassroomController {
         ctx.status(204);
     }
 
+    private void updateView(Context ctx) {
+        teacher(ctx);
+        ViewRequest request = ctx.bodyAsClass(ViewRequest.class);
+        if (request.inverted() == null) {
+            throw new BadRequestResponse("Falta la orientación del aula.");
+        }
+        service.setInverted(request.inverted());
+        ctx.status(204);
+    }
+
+    private void updateAisle(Context ctx) {
+        teacher(ctx);
+        AisleRequest request = ctx.bodyAsClass(AisleRequest.class);
+        if (request.aisle() == null) {
+            throw new BadRequestResponse("Falta el estado del pasillo.");
+        }
+        service.setAisle(Integer.parseInt(ctx.pathParam("seat")), request.aisle());
+        ctx.status(204);
+    }
+
     private void resetProgress(Context ctx) {
         teacher(ctx);
         service.reset();
@@ -198,6 +224,6 @@ public class ClassroomController {
                         Map.of(
                                 "message",
                                 "No se pudo completar la operación. Revisa la consola del"
-                                    + " servidor."));
+                                        + " servidor."));
     }
 }
