@@ -265,6 +265,67 @@ class ClassroomTest {
     }
 
     @Test
+    void hiddenStudentsPersistAndCannotChangeProgressUntilReactivated() {
+        ClassroomService service = service();
+        Student student = service.register(null, "Ana");
+        service.addActivity("Uno");
+        String activity = service.snapshot().getActivities().get(0).getId();
+        service.move(student.getId(), 3);
+        service.complete(student.getId(), activity, true);
+        service.setStudentHidden(student.getId(), true);
+        assertTrue(service().student(student.getId()).isHidden());
+        assertEquals(3, service.student(student.getId()).getSeat());
+        assertEquals(Set.of(activity), service.student(student.getId()).getCompleted());
+        assertThrows(
+                IllegalArgumentException.class,
+                new org.junit.jupiter.api.function.Executable() {
+                    @Override
+                    public void execute() {
+                        service.complete(student.getId(), activity, false);
+                    }
+                });
+        service.register(student.getId(), "Ana García");
+        service.move(student.getId(), 4);
+        service.resize(5, 6);
+        assertTrue(service.student(student.getId()).isHidden());
+        service.reset();
+        service.deleteActivity(activity);
+        assertTrue(service.student(student.getId()).isHidden());
+        service.setStudentHidden(student.getId(), false);
+        service.addActivity("Dos");
+        service.complete(student.getId(), service.snapshot().getActivities().get(0).getId(), true);
+        assertFalse(service().student(student.getId()).isHidden());
+    }
+
+    @Test
+    void deletionFreesSeatAndOnlySavedChangesNotifyListeners() {
+        ClassroomService service = service();
+        final int[] changes = {0};
+        service.addChangeListener(
+                new Runnable() {
+                    @Override
+                    public void run() {
+                        changes[0]++;
+                    }
+                });
+        Student student = service.register(null, "Ana");
+        service.move(student.getId(), 0);
+        service.deleteStudent(student.getId());
+        assertEquals(3, changes[0]);
+        assertNull(service().student(student.getId()));
+        assertTrue(service.snapshot().getStudents().isEmpty());
+        assertThrows(
+                IllegalArgumentException.class,
+                new org.junit.jupiter.api.function.Executable() {
+                    @Override
+                    public void execute() {
+                        service.deleteStudent(student.getId());
+                    }
+                });
+        assertEquals(3, changes[0]);
+    }
+
+    @Test
     void teacherRequiresLocalConnection() {
         assertTrue(TeacherAccess.sameMachine("127.0.0.1", "127.0.0.1"));
         assertTrue(TeacherAccess.sameMachine("::1", "::1"));

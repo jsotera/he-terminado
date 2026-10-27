@@ -399,6 +399,8 @@ button:hover {
 }
 .student-card {
   position: relative;
+  border: 1px solid transparent;
+  border-radius: 8px;
   display: flex;
   flex-direction: column;
   text-align: left;
@@ -412,20 +414,58 @@ button:hover {
 .student-card strong {
   font-size: 12px;
 }
-.student-card.offline {
-  opacity: 0.55;
-  filter: grayscale(1);
+.student-card.inactive {
+  background: #e4e7e3;
+  border-color: #c9cec7;
+  color: #647060;
   cursor: default;
 }
-.student-card.offline:hover {
+.student-card.inactive .card-activities {
+  opacity: 0.5;
   filter: grayscale(1);
 }
-.student-card .student-presence {
+.student-card-select {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  width: 100%;
+  flex: 1;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+}
+.student-card-select:disabled {
+  cursor: default;
+}
+.student-card-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+}
+.card-action {
+  padding: 4px 6px;
+  background: #ffffffb0;
+  color: #46614d;
+  line-height: 1;
+}
+.card-action svg {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.remove-student {
+  color: #9c5953;
+  font-size: 22px;
+}
+.student-card .student-status {
   font-size: 10px;
   font-weight: 650;
-}
-.presence-option {
-  margin-top: 14px;
 }
 .student-card span {
   font-size: 10px;

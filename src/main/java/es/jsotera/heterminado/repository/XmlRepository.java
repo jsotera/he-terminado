@@ -89,7 +89,12 @@ public class XmlRepository {
                     completed.add(id);
                 }
                 students.add(
-                        new Student(e.getAttribute("id"), e.getAttribute("name"), completed, seat));
+                        new Student(
+                                e.getAttribute("id"),
+                                e.getAttribute("name"),
+                                completed,
+                                seat,
+                                Boolean.parseBoolean(e.getAttribute("hidden"))));
             }
             return new Classroom(rows, columns, activities, students, inverted, aisles);
         } catch (Exception e) {
@@ -129,6 +134,7 @@ public class XmlRepository {
                 Element e = doc.createElement("student");
                 e.setAttribute("id", s.getId());
                 e.setAttribute("name", s.getName());
+                e.setAttribute("hidden", String.valueOf(s.isHidden()));
                 if (s.getSeat() != null) e.setAttribute("seat", "" + s.getSeat());
                 for (String id : s.getCompleted()) {
                     Element done = doc.createElement("done");

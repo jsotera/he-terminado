@@ -4,7 +4,8 @@ const $ = function (id) {
   return document.getElementById(id);
 };
 const teacher = document.body.dataset.role === "teacher";
-const refreshInterval = Number(document.body.dataset.refreshInterval);
+let refreshPending = false;
+let refreshing = false;
 let state,
   selectedStudent = null,
   editingName = false,
@@ -58,7 +59,12 @@ async function request(path, method = "GET", body) {
   return response.status === 204 ? null : response.json();
 }
 async function refresh() {
-  if (busy || dragging) return;
+  if (busy || dragging || refreshing) {
+    refreshPending = true;
+    return;
+  }
+  refreshing = true;
+  refreshPending = false;
   try {
     const next = await request("/api/state");
     state = next;
@@ -67,11 +73,13 @@ async function refresh() {
       render();
       lastView = signature;
     }
-    $("connection").textContent =
-      "● Conectado · cada " + refreshInterval / 1000 + " s";
+    $("connection").textContent = "● En directo";
   } catch (e) {
     $("connection").textContent = "● Sin conexión · reintentando";
     error(e.message);
+  } finally {
+    refreshing = false;
+    if (refreshPending && !busy && !dragging) refresh();
   }
 }
 async function mutate(path, method, body) {
@@ -96,19 +104,16 @@ function render() {
 }
 function renderTeacher() {
   const c = state.classroom;
-  const connected = c.students.filter(isOnline).length;
-  $("presence-summary").textContent =
-    connected +
-    " conectados · " +
-    (c.students.length - connected) +
-    " desconectados";
   $("student-count").textContent = c.students.length;
   $("activity-count").textContent = c.activities.length;
   $("finished-count").textContent = c.activities.length
     ? c.students.filter(function (s) {
-        return c.activities.every(function (a) {
-          return s.completed.includes(a.id);
-        });
+        return (
+          !s.hidden &&
+          c.activities.every(function (a) {
+            return s.completed.includes(a.id);
+          })
+        );
       }).length
     : 0;
   if (
@@ -149,19 +154,12 @@ function renderTeacher() {
   });
   renderSeats();
 }
-function isOnline(student) {
-  return state.onlineStudentIds.includes(student.id);
-}
-function isVisible(student) {
-  return !$("hide-offline").checked || isOnline(student);
-}
 function selectStudent(s) {
   placingAisle = false;
   selectedStudent = selectedStudent === s.id ? null : s.id;
   renderSeats();
 }
 function studentCard(s) {
-  const online = isOnline(s);
   const activities = state.classroom.activities;
   const filter = $("activity-filter").value;
   const done = filter
@@ -171,23 +169,24 @@ function studentCard(s) {
         return s.completed.includes(a.id);
       });
   const card = element(
-    "button",
+    "div",
     undefined,
     "student-card " +
       (!activities.length ? "neutral" : done ? "done" : "pending") +
-      (online ? "" : " offline") +
+      (s.hidden ? " inactive" : "") +
       (selectedStudent === s.id ? " selected" : ""),
   );
-  card.type = "button";
-  card.draggable = online;
-  card.disabled = !online;
-  card.setAttribute("aria-pressed", String(selectedStudent === s.id));
-  card.append(
+  card.draggable = !s.hidden;
+  const content = element("button", undefined, "student-card-select");
+  content.type = "button";
+  content.disabled = s.hidden;
+  content.setAttribute("aria-pressed", String(selectedStudent === s.id));
+  content.append(
     element("strong", s.name),
     element(
       "span",
-      online ? "● Conectado" : "○ Sin conexión",
-      "student-presence",
+      s.hidden ? "Participación desactivada" : "",
+      "student-status",
     ),
     element(
       "span",
@@ -218,8 +217,31 @@ function studentCard(s) {
     );
     checklist.append(row);
   });
-  card.append(checklist);
-  card.onclick = function (event) {
+  content.append(checklist);
+  card.append(content);
+  const actions = element("div", undefined, "student-card-actions");
+  const visibility = element("button", undefined, "card-action");
+  visibility.type = "button";
+  const visibilityLabel = (s.hidden ? "Mostrar a " : "Ocultar a ") + s.name;
+  visibility.title = visibilityLabel;
+  visibility.setAttribute("aria-label", visibilityLabel);
+  visibility.append(eyeIcon(s.hidden));
+  visibility.onclick = function () {
+    mutate("/api/students/" + s.id + "/visibility", "PUT", {
+      hidden: !s.hidden,
+    });
+  };
+  const remove = element("button", "×", "card-action remove-student");
+  remove.type = "button";
+  remove.title = "Eliminar a " + s.name;
+  remove.setAttribute("aria-label", remove.title);
+  remove.onclick = function () {
+    if (confirm("¿Eliminar a " + s.name + " y su progreso?"))
+      mutate("/api/students/" + s.id, "DELETE");
+  };
+  actions.append(visibility, remove);
+  card.append(actions);
+  content.onclick = function (event) {
     event.stopPropagation();
     if (placingAisle && s.seat !== null) {
       placeAisle(s.seat);
@@ -234,8 +256,22 @@ function studentCard(s) {
   };
   card.ondragend = function () {
     dragging = false;
+    if (refreshPending) refresh();
   };
   return card;
+}
+function eyeIcon(hidden) {
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg.setAttribute("viewBox", "0 0 24 24");
+  svg.setAttribute("aria-hidden", "true");
+  const path = document.createElementNS(svg.namespaceURI, "path");
+  path.setAttribute(
+    "d",
+    "M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0" +
+      (hidden ? " M3 3l18 18" : ""),
+  );
+  svg.append(path);
+  return svg;
 }
 function dropTarget(node, seat) {
   const move = function (id) {
@@ -325,7 +361,7 @@ function renderSeats() {
   if (
     selectedStudent &&
     !c.students.some(function (s) {
-      return s.id === selectedStudent && isOnline(s);
+      return s.id === selectedStudent && !s.hidden;
     })
   ) {
     selectedStudent = null;
@@ -360,8 +396,8 @@ function renderSeats() {
     const student = c.students.find(function (s) {
       return s.seat === i;
     });
-    if (student && isVisible(student)) node.append(studentCard(student));
-    else node.append(element("span", student ? "Reservado" : "Libre", "free"));
+    if (student) node.append(studentCard(student));
+    else node.append(element("span", "Libre", "free"));
     dropTarget(node, i);
     seats.append(node);
   }
@@ -369,7 +405,7 @@ function renderSeats() {
   unseated.replaceChildren();
   c.students
     .filter(function (s) {
-      return s.seat === null && isVisible(s);
+      return s.seat === null;
     })
     .forEach(function (s) {
       return unseated.append(studentCard(s));
@@ -393,6 +429,7 @@ function renderStudent() {
   $("student-work").hidden = !s || editingName;
   $("cancel-name").hidden = !s;
   if (!s) return;
+  $("student-inactive").hidden = !s.hidden;
   $("greeting").textContent = "Hola, " + s.name;
   $("student-summary").textContent = state.activities.length
     ? s.completed.length +
@@ -412,6 +449,7 @@ function renderStudent() {
     const input = element("input");
     input.type = "checkbox";
     input.checked = done;
+    input.disabled = s.hidden;
     input.onchange = function () {
       mutate("/api/progress/" + a.id, "PUT", {
         completed: input.checked,
@@ -435,24 +473,6 @@ if (teacher) {
       setClassroomExpanded(false);
     }
   });
-  // Es una preferencia de este navegador; no cambia ni borra alumnos del aula.
-  try {
-    $("hide-offline").checked =
-      localStorage.getItem("heterminado_hide_offline") === "true";
-  } catch (e) {
-    /* El navegador puede desactivar el almacenamiento local. */
-  }
-  $("hide-offline").onchange = function () {
-    try {
-      localStorage.setItem(
-        "heterminado_hide_offline",
-        String($("hide-offline").checked),
-      );
-    } catch (e) {
-      /* El checkbox sigue funcionando durante esta sesión. */
-    }
-    renderSeats();
-  };
   $("invert-view").onchange = async function () {
     const checkbox = $("invert-view");
     checkbox.disabled = true;
@@ -478,6 +498,7 @@ if (teacher) {
   };
   $("aisle-tool").ondragend = function () {
     dragging = false;
+    if (refreshPending) refresh();
   };
   $("activity-form").onsubmit = async function (e) {
     e.preventDefault();
@@ -528,4 +549,8 @@ if (teacher) {
   };
 }
 refresh();
-setInterval(refresh, refreshInterval);
+const updates = new EventSource("/api/events");
+updates.addEventListener("change", refresh);
+updates.onerror = function () {
+  $("connection").textContent = "● Sin conexión · reconectando";
+};

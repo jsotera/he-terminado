@@ -1,10 +1,8 @@
 package es.jsotera.heterminado.web;
 
-import es.jsotera.heterminado.config.Conf;
 import es.jsotera.heterminado.model.Classroom;
 import es.jsotera.heterminado.model.Student;
 import es.jsotera.heterminado.service.ClassroomService;
-import es.jsotera.heterminado.service.PresenceService;
 import es.jsotera.heterminado.web.request.*;
 
 import io.javalin.Javalin;
@@ -21,14 +19,40 @@ public class ClassroomController {
     private static final String COOKIE = "heterminado_student";
     private static final Logger LOGGER = LoggerFactory.getLogger(ClassroomController.class);
     private final ClassroomService service;
-    private final PresenceService presence = new PresenceService();
+    private final ClassroomEvents events = new ClassroomEvents();
 
     public ClassroomController(ClassroomService service) {
         this.service = service;
+        service.addChangeListener(events);
     }
 
     /** Igual que en HolaJavalin: cada ruta apunta a un método que recibe Context. */
     public void routes(Javalin app) {
+        app.sse("/api/events", events);
+        app.delete(
+                "/api/students/{id}",
+                new Handler() {
+                    @Override
+                    public void handle(Context ctx) {
+                        teacher(ctx);
+                        service.deleteStudent(ctx.pathParam("id"));
+                        ctx.status(204);
+                    }
+                });
+        app.put(
+                "/api/students/{id}/visibility",
+                new Handler() {
+                    @Override
+                    public void handle(Context ctx) {
+                        teacher(ctx);
+                        StudentVisibilityRequest request =
+                                ctx.bodyAsClass(StudentVisibilityRequest.class);
+                        if (request.getHidden() == null)
+                            throw new BadRequestResponse("Falta la visibilidad.");
+                        service.setStudentHidden(ctx.pathParam("id"), request.getHidden());
+                        ctx.status(204);
+                    }
+                });
         app.before(
                 new Handler() {
                     @Override
@@ -162,7 +186,6 @@ public class ClassroomController {
     private void index(Context ctx) {
         Map<String, Object> model = new HashMap<>();
         model.put("teacher", TeacherAccess.isTeacher(ctx));
-        model.put("refreshInterval", Conf.INTERVALO_ACTUALIZACION_MS);
         ctx.header("Cache-Control", "no-store");
         ctx.render("/templates/index.ftl", model);
     }
@@ -173,13 +196,9 @@ public class ClassroomController {
         if (TeacherAccess.isTeacher(ctx)) {
             result.put("role", "teacher");
             result.put("classroom", classroom);
-            result.put("onlineStudentIds", presence.onlineStudentIds(classroom.getStudents()));
         } else {
             Student student = service.student(ctx.cookie(COOKIE));
-            if (student != null) {
-                // La consulta periódica del alumno funciona también como latido.
-                presence.markSeen(student.getId());
-            }
+
             result.put("role", "student");
             result.put("activities", classroom.getActivities());
             result.put("student", student);
@@ -193,7 +212,6 @@ public class ClassroomController {
         }
         NameRequest request = ctx.bodyAsClass(NameRequest.class);
         Student student = service.register(ctx.cookie(COOKIE), request.getName());
-        presence.markSeen(student.getId());
         ctx.header(
                 "Set-Cookie",
                 COOKIE
@@ -213,7 +231,6 @@ public class ClassroomController {
             throw new BadRequestResponse("Falta el estado.");
         }
         service.complete(id, ctx.pathParam("id"), request.getCompleted());
-        presence.markSeen(id);
         ctx.status(204);
     }
 

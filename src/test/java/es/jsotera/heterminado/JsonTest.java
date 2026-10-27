@@ -50,12 +50,12 @@ class JsonTest {
         JsonNode expected =
                 mapper.readTree(
                         """
-                        {
-                          "rows":2,"columns":3,"inverted":true,"aisles":[2],
-                          "activities":[{"id":"a","title":"Bucles"}],
-                          "students":[{"id":"ana","name":"Ana","completed":["a"],"seat":0}]
-                        }
-                        """);
+      {
+        "rows":2,"columns":3,"inverted":true,"aisles":[2],
+        "activities":[{"id":"a","title":"Bucles"}],
+"students":[{"id":"ana","name":"Ana","completed":["a"],"seat":0,"hidden":false}]
+      }
+""");
         assertEquals(expected, actual);
     }
 }

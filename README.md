@@ -28,7 +28,7 @@ Las opciones `-D` van antes de `-jar`. El archivo se resuelve desde la carpeta d
 
 1. El profesorado añade una o varias actividades.
 2. Cada alumno introduce su nombre y marca o desmarca sus actividades. Una cookie recuerda su identidad durante un año; «Cambiar nombre» conserva su progreso y asiento.
-3. El panel del profesor se actualiza cada dos segundos. Rojo indica tareas pendientes; verde, terminadas. Sin actividades, las tarjetas aparecen en gris. Se puede filtrar una actividad concreta o ver el conjunto.
+3. El panel del profesor se actualiza al cambiar el aula. Rojo indica tareas pendientes; verde, terminadas. Sin actividades, las tarjetas aparecen en gris. Se puede filtrar una actividad concreta o ver el conjunto.
 4. El profesor configura filas y columnas (1–12) y arrastra cada alumno desde «Sin asiento». También puede seleccionar una tarjeta y pulsar el destino, con ratón o teclado. Al mover a un asiento ocupado se intercambian los sitios.
 5. Al reducir el aula, los alumnos que quedan fuera pasan a «Sin asiento». Los demás conservan su fila y columna.
 6. «Reiniciar progreso» pone todas las actividades como pendientes, conservando actividades, identidades y asientos. Eliminar una actividad elimina también su progreso, previa confirmación.
@@ -43,22 +43,13 @@ Para compartir el plano con la clase, pulsa «Maximizar» en «Mi aula». Se ocu
 
 Para abrir el aula desde un icono, crea un acceso directo en el equipo del alumno con la URL `http://IP-DEL-PROFESOR:7070/index` (o el puerto configurado). Basta con el navegador y la conexión al servidor del aula; no es necesario instalar una aplicación ni configurar certificados.
 
-## Alumnado conectado
+## Gestión manual del alumnado
 
-Cada consulta del navegador del alumno a `/api/state` actualiza su última conexión. Se envía cada dos segundos; también se actualiza al entrar con su nombre o marcar una actividad. Si pasan 30 segundos sin recibir nada, el profesor lo verá atenuado, con la etiqueta «Sin conexión» y sin poder seleccionar ni arrastrar su tarjeta.
+Cada tarjeta incluye un ojo y una ×. El ojo desactiva o reactiva la participación: la tarjeta queda en gris, conserva nombre, asiento y progreso, y el alumno no puede marcar actividades hasta que el profesor vuelva a mostrarlo. El estado se guarda en XML. No se comprueba automáticamente si está conectado.
 
-El checkbox «Ocultar alumnado desconectado» oculta esas tarjetas, también en «Sin asiento». Los pupitres que ocupaban se muestran como «Reservado»: el alumno conserva su sitio, su nombre y su progreso. Si vuelve a conectar, reaparece automáticamente. La preferencia del checkbox se recuerda en el navegador del profesor. Los contadores de alumnado y progreso siguen incluyendo a todo el alumnado guardado; debajo se indica cuántos están conectados y desconectados.
+La × elimina al alumno y su progreso, previa confirmación, y libera su asiento. Si su navegador sigue abierto, volverá a la pantalla de nombre y podrá entrar de nuevo si el profesor se lo indica.
 
-Los tiempos se configuran en `src/main/java/es/jsotera/heterminado/config/Conf.java`:
-
-```java
-public static final long INTERVALO_ACTUALIZACION_MS = 2_000;
-public static final long TIEMPO_DESCONEXION_MS = 30_000;
-```
-
-Son milisegundos. Usa un intervalo positivo menor que el tiempo de desconexión y recompila y reinicia después de cambiarlos. El servidor pasa el intervalo al navegador, por lo que no hay que editar JavaScript.
-
-La presencia se mantiene en memoria y no escribe el XML en cada consulta. Tras reiniciar el servidor, cada alumno se considera desconectado hasta su siguiente consulta. «Conectado» significa que su navegador ha enviado una petición recientemente; si el dispositivo suspende la pestaña o pierde la red, dejará de enviar peticiones y se aplicará el mismo tiempo de espera.
+Las actualizaciones llegan mediante una conexión SSE de Javalin: el servidor envía un aviso cuando cambia el aula y el navegador consulta el estado actualizado. No hay consultas cada dos segundos, latidos ni tiempo de desconexión. La conexión se restablece automáticamente si se corta.
 
 ## Identificación por IP
 
@@ -82,7 +73,7 @@ Ejemplo del formato (los identificadores se generan automáticamente):
   <aisles><aisle seat="2"/></aisles>
   <activities><activity id="act-1">Ejercicio de arrays</activity></activities>
   <students>
-    <student id="alumno-1" name="Ana" seat="0">
+    <student id="alumno-1" name="Ana" seat="0" hidden="false">
       <done activityId="act-1"/>
     </student>
   </students>
@@ -90,6 +81,7 @@ Ejemplo del formato (los identificadores se generan automáticamente):
 ```
 
 Los asientos empiezan por 0, de izquierda a derecha y de arriba abajo. Sin atributo `seat`, el alumno no tiene asiento.
+`hidden="true"` desactiva temporalmente la participación; si el atributo no existe en un XML anterior, el alumno permanece activo.
 `inverted` configura la vista y `aisles` contiene las posiciones reservadas como pasillo. Los XML anteriores, sin estos datos, siguen siendo válidos: se abren con orientación normal y sin pasillos.
 
 ## Organización para clase
@@ -97,13 +89,12 @@ Los asientos empiezan por 0, de izquierda a derecha y de arriba abajo. Sin atrib
 ```text
 src/main/java/es/jsotera/heterminado/
   Main.java                   Arranque y configuración
-  config/Conf                 Intervalo de actualización y tiempo de desconexión
   config/WebConfig            Clase que configura Javalin y FreeMarker
   model/                      Clases: Activity, Student, Classroom
   repository/XmlRepository    Lectura y escritura XML con DOM
   service/ClassroomService    Reglas del aula y cambios de estado
-  service/PresenceService     Última conexión de cada alumno, en memoria
   web/ClassroomController    Rutas HTTP y validación de acceso
+  web/ClassroomEvents        Avisos al navegador cuando cambia el aula
   web/TeacherAccess          Comparación de IP
   web/request/               Clases con los datos JSON de cada petición
 src/main/resources/

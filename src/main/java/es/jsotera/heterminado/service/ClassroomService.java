@@ -10,11 +10,17 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 /** Métodos sincronizados para que dos conexiones no pierdan cambios entre sí. */
 public class ClassroomService {
     private final XmlRepository repository;
     private Classroom state;
+    private final List<Runnable> changeListeners = new CopyOnWriteArrayList<>();
+
+    public void addChangeListener(Runnable listener) {
+        changeListeners.add(listener);
+    }
 
     public ClassroomService(XmlRepository repository) {
         this.repository = repository;
@@ -38,6 +44,9 @@ public class ClassroomService {
         // Solo cambiamos el estado en memoria cuando el XML se ha guardado bien.
         repository.save(next);
         state = next;
+        for (Runnable listener : changeListeners) {
+            listener.run();
+        }
     }
 
     private String text(String text, int max) {
@@ -55,7 +64,13 @@ public class ClassroomService {
         if (previous == null) {
             next = new Student(UUID.randomUUID().toString(), name, Set.of(), null);
         } else {
-            next = new Student(previous.getId(), name, previous.getCompleted(), previous.getSeat());
+            next =
+                    new Student(
+                            previous.getId(),
+                            name,
+                            previous.getCompleted(),
+                            previous.getSeat(),
+                            previous.isHidden());
         }
 
         List<Student> students = new ArrayList<>();
@@ -112,7 +127,13 @@ public class ClassroomService {
         for (Student student : state.getStudents()) {
             Set<String> done = new HashSet<>(student.getCompleted());
             done.remove(id);
-            students.add(new Student(student.getId(), student.getName(), done, student.getSeat()));
+            students.add(
+                    new Student(
+                            student.getId(),
+                            student.getName(),
+                            done,
+                            student.getSeat(),
+                            student.isHidden()));
         }
         commit(
                 new Classroom(
@@ -129,6 +150,9 @@ public class ClassroomService {
         if (student(studentId) == null) {
             throw new IllegalArgumentException("Introduce tu nombre de nuevo.");
         }
+        if (student(studentId).isHidden()) {
+            throw new IllegalArgumentException("El profesorado ha desactivado tu participación.");
+        }
 
         List<Student> students = new ArrayList<>();
         for (Student student : state.getStudents()) {
@@ -140,7 +164,12 @@ public class ClassroomService {
                     done.remove(activityId);
                 }
                 students.add(
-                        new Student(student.getId(), student.getName(), done, student.getSeat()));
+                        new Student(
+                                student.getId(),
+                                student.getName(),
+                                done,
+                                student.getSeat(),
+                                student.isHidden()));
             } else {
                 students.add(student);
             }
@@ -174,7 +203,12 @@ public class ClassroomService {
                 }
             }
             students.add(
-                    new Student(student.getId(), student.getName(), student.getCompleted(), seat));
+                    new Student(
+                            student.getId(),
+                            student.getName(),
+                            student.getCompleted(),
+                            seat,
+                            student.isHidden()));
         }
         Set<Integer> aisles = new HashSet<>();
         for (Integer seat : state.getAisles()) {
@@ -217,7 +251,11 @@ public class ClassroomService {
             }
             students.add(
                     new Student(
-                            student.getId(), student.getName(), student.getCompleted(), target));
+                            student.getId(),
+                            student.getName(),
+                            student.getCompleted(),
+                            target,
+                            student.isHidden()));
         }
         commit(
                 new Classroom(
@@ -233,7 +271,12 @@ public class ClassroomService {
         List<Student> students = new ArrayList<>();
         for (Student student : state.getStudents()) {
             students.add(
-                    new Student(student.getId(), student.getName(), Set.of(), student.getSeat()));
+                    new Student(
+                            student.getId(),
+                            student.getName(),
+                            Set.of(),
+                            student.getSeat(),
+                            student.isHidden()));
         }
         commit(
                 new Classroom(
@@ -273,7 +316,11 @@ public class ClassroomService {
             if (aisle && Integer.valueOf(seat).equals(student.getSeat())) {
                 students.add(
                         new Student(
-                                student.getId(), student.getName(), student.getCompleted(), null));
+                                student.getId(),
+                                student.getName(),
+                                student.getCompleted(),
+                                null,
+                                student.isHidden()));
             } else {
                 students.add(student);
             }
@@ -286,5 +333,45 @@ public class ClassroomService {
                         students,
                         state.isInverted(),
                         aisles));
+    }
+
+    public synchronized void deleteStudent(String id) {
+        if (student(id) == null) throw new IllegalArgumentException("El alumno ya no existe.");
+        List<Student> students = new ArrayList<>();
+        for (Student student : state.getStudents()) {
+            if (!student.getId().equals(id)) students.add(student);
+        }
+        commit(
+                new Classroom(
+                        state.getRows(),
+                        state.getColumns(),
+                        state.getActivities(),
+                        students,
+                        state.isInverted(),
+                        state.getAisles()));
+    }
+
+    public synchronized void setStudentHidden(String id, boolean hidden) {
+        if (student(id) == null) throw new IllegalArgumentException("El alumno ya no existe.");
+        List<Student> students = new ArrayList<>();
+        for (Student student : state.getStudents()) {
+            if (student.getId().equals(id)) {
+                students.add(
+                        new Student(
+                                student.getId(),
+                                student.getName(),
+                                student.getCompleted(),
+                                student.getSeat(),
+                                hidden));
+            } else students.add(student);
+        }
+        commit(
+                new Classroom(
+                        state.getRows(),
+                        state.getColumns(),
+                        state.getActivities(),
+                        students,
+                        state.isInverted(),
+                        state.getAisles()));
     }
 }
