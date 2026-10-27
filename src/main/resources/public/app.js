@@ -12,6 +12,22 @@ let state,
   dragging = false;
 let lastView = "";
 let placingAisle = false;
+let classroomExpanded = false;
+let classroomScrollY = 0;
+
+function setClassroomExpanded(expanded) {
+  if (expanded) classroomScrollY = window.scrollY;
+  classroomExpanded = expanded;
+  document.body.classList.toggle("classroom-expanded", expanded);
+  const button = $("toggle-classroom");
+  button.textContent = expanded ? "⤡ Minimizar" : "⤢ Maximizar";
+  button.setAttribute("aria-pressed", String(expanded));
+  button.title = expanded
+    ? "Volver a la vista completa (Escape)"
+    : "Mostrar solo los pupitres";
+  button.focus({ preventScroll: true });
+  window.scrollTo(0, expanded ? 0 : classroomScrollY);
+}
 function element(tag, text, className) {
   const node = document.createElement(tag);
   if (text !== undefined) node.textContent = text;
@@ -411,6 +427,14 @@ function renderStudent() {
   });
 }
 if (teacher) {
+  $("toggle-classroom").onclick = function () {
+    setClassroomExpanded(!classroomExpanded);
+  };
+  document.addEventListener("keydown", function (event) {
+    if (event.key === "Escape" && classroomExpanded) {
+      setClassroomExpanded(false);
+    }
+  });
   // Es una preferencia de este navegador; no cambia ni borra alumnos del aula.
   try {
     $("hide-offline").checked =

@@ -398,6 +398,7 @@ button:hover {
   margin: auto;
 }
 .student-card {
+  position: relative;
   display: flex;
   flex-direction: column;
   text-align: left;
@@ -625,4 +626,41 @@ footer {
 }
 .stats strong {
   flex-shrink: 0;
+}
+
+/* Vista para compartir: solo el plano y el botón para volver. */
+.classroom-expanded > header,
+.classroom-expanded footer,
+.classroom-expanded .teacher-sidebar,
+.classroom-expanded .classroom-settings,
+.classroom-expanded .unseated-section,
+.classroom-expanded .classroom-heading h2,
+.classroom-expanded .activity-filter-control {
+  display: none;
+}
+body.classroom-expanded main {
+  max-width: none;
+  padding: 16px;
+}
+.classroom-expanded .teacher-layout {
+  display: block;
+}
+.classroom-expanded .classroom {
+  min-height: calc(100vh - 32px);
+  padding: 16px;
+}
+.classroom-expanded .classroom-heading {
+  justify-content: flex-end;
+}
+.classroom-expanded .board {
+  margin: 16px auto;
+}
+.classroom-expanded .student-card strong {
+  font-size: clamp(14px, 1.2vw, 20px);
+}
+.classroom-expanded .student-card .card-activity {
+  font-size: clamp(12px, 1vw, 16px);
+}
+.classroom-expanded .seat-number {
+  font-size: 12px;
 }

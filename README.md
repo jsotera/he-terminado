@@ -37,6 +37,8 @@ Las opciones `-D` van antes de `-jar`. El archivo se resuelve desde la carpeta d
 
 La orientación y los pasillos se guardan automáticamente en el XML. Al redimensionar, los pasillos conservan su fila y columna y se eliminan los que queden fuera.
 
+Para compartir el plano con la clase, pulsa «Maximizar» en «Mi aula». Se ocultan la cabecera, los contadores, los controles y el alumnado sin asiento para mostrar solo la pizarra y los pupitres con texto más grande. El progreso sigue actualizándose. «Minimizar» o la tecla Escape recuperan la vista completa; no cambian las asignaciones ni la configuración del aula.
+
 ## Acceso directo
 
 Para abrir el aula desde un icono, crea un acceso directo en el equipo del alumno con la URL `http://IP-DEL-PROFESOR:7070/index` (o el puerto configurado). Basta con el navegador y la conexión al servidor del aula; no es necesario instalar una aplicación ni configurar certificados.
