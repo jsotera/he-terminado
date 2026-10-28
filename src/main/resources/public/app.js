@@ -162,6 +162,11 @@ function selectStudent(s) {
 function studentCard(s) {
   const activities = state.classroom.activities;
   const filter = $("activity-filter").value;
+  const visibleActivities = filter
+    ? activities.filter(function (activity) {
+        return activity.id === filter;
+      })
+    : activities;
   const done = filter
     ? s.completed.includes(filter)
     : activities.length > 0 &&
@@ -192,12 +197,16 @@ function studentCard(s) {
       "span",
       !activities.length
         ? "Sin actividades"
-        : s.completed.length + " de " + activities.length + " terminadas",
+        : filter
+          ? done
+            ? "Terminada"
+            : "Pendiente"
+          : s.completed.length + " de " + activities.length + " terminadas",
       "card-summary",
     ),
   );
   const checklist = element("span", undefined, "card-activities");
-  activities.forEach(function (activity) {
+  visibleActivities.forEach(function (activity) {
     const completed = s.completed.includes(activity.id);
     const status = completed ? "Terminada" : "Pendiente";
     const row = element(

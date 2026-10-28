@@ -28,7 +28,7 @@ Las opciones `-D` van antes de `-jar`. El archivo se resuelve desde la carpeta d
 
 1. El profesorado añade una o varias actividades.
 2. Cada alumno introduce su nombre y marca o desmarca sus actividades. Una cookie recuerda su identidad durante un año; «Cambiar nombre» conserva su progreso y asiento.
-3. El panel del profesor se actualiza al cambiar el aula. Rojo indica tareas pendientes; verde, terminadas. Sin actividades, las tarjetas aparecen en gris. Se puede filtrar una actividad concreta o ver el conjunto.
+3. El panel del profesor se actualiza al cambiar el aula. Con «Todas las actividades», cada tarjeta muestra todas las tareas y se pone verde cuando están todas terminadas. Al elegir una actividad, la tarjeta muestra solo esa tarea y queda verde o roja según su estado. El filtro se aplica también a «Sin asiento» y a la vista maximizada. Sin actividades, las tarjetas aparecen en gris; el alumnado desactivado conserva su aspecto gris.
 4. El profesor configura filas y columnas (1–12) y arrastra cada alumno desde «Sin asiento». También puede seleccionar una tarjeta y pulsar el destino, con ratón o teclado. Al mover a un asiento ocupado se intercambian los sitios.
 5. Al reducir el aula, los alumnos que quedan fuera pasan a «Sin asiento». Los demás conservan su fila y columna.
 6. «Reiniciar progreso» pone todas las actividades como pendientes, conservando actividades, identidades y asientos. Eliminar una actividad elimina también su progreso, previa confirmación.
